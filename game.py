@@ -56,6 +56,7 @@ def generate_track(n_points, w, h):
     hull = ConvexHull(points)
 
     arcs = []
+    points_list = []
 
     for s in hull.simplices:
         midpoint = [points[s, 0].mean() + (np.random.rand() * w) / 8, points[s, 1].mean() + (np.random.rand() * h) / 8]
@@ -72,12 +73,17 @@ def generate_track(n_points, w, h):
         arcs.append([arc1_s, arc1_e])
         arcs.append([arc2_s, arc2_e])
 
+        points_list.append(arc1_s)
+        points_list.append(midpoint)
+        points_list.append(arc2_e)
+
     return arcs
 
-def draw_track(surface, arcs):
+def draw_track_arcs(surface, arcs):
 
     for a in arcs:
-        pygame.draw.line(surface, (255, 0, 0), a[0], a[1], 5)
+        pygame.draw.line(surface, (255, 0, 0), a[0], a[1], 20)
+
 
 def main():
     
@@ -102,7 +108,7 @@ def main():
 
     running = True
     
-    track = generate_track(8, display_width, display_height)
+    track = generate_track(6, display_width, display_height)
 
     while running:    
         
@@ -121,8 +127,9 @@ def main():
 
         surface.fill(white)
         
-        draw_track(surface, track)
-        
+        draw_track_arcs(surface, track)
+        #pygame.draw.lines(surface, (255, 0, 0), True, points)
+
         new_box.draw(surface)
 
         new_box.move()
