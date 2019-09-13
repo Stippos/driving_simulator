@@ -1,4 +1,5 @@
 import pygame
+import pygame.gfxdraw
 import numpy as np
 import pandas as pd
 
@@ -18,19 +19,24 @@ class box:
         self.v = 0
         self.a = 0
 
-        self.dir = np.pi
+        self.dir = 0
 
         self.color = color
 
+        self.corners = np.array([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
+
     def draw(self, surface):
-        pygame.draw.rect(surface, self.color, [self.x, self.y, self.h, self.w])
+        
+        draw_dir = -self.dir
 
-        line_start = np.array([self.x + self.w / 2, self.y + self.h / 2])
+        c = self.corners @ -np.array([[np.cos(draw_dir), -np.sin(draw_dir)], [np.sin(draw_dir), np.cos(draw_dir)]])
+        
+        corners = [[c[i,0] + self.x, c[i,1] + self.y] for i in range(4)]
 
-        draw_dir = self.dir - np.pi / 2
+        pygame.gfxdraw.filled_polygon(surface, corners, (255, 255, 0))
+        pygame.draw.lines(surface, (0,0,0), True, corners, 3)
+        
 
-        line_end = line_start + np.array([np.cos(draw_dir), np.sin(draw_dir)]) * 15
-        pygame.draw.line(surface, self.color, line_start, line_end, 5)
 
     def move(self):
         self.v += self.a
@@ -46,14 +52,20 @@ class box:
     def accelerate(self, amount):
         self.a += amount
 
+    def reset(self):
+        self.x = 230
+        self.y = 400
+        self.v = 0
+        self.dir = 0
+        self.a = 0
+    
+
 def get_track():
     track_points = pd.read_csv("rata.csv", header = None)
 
     outer_track = track_points.iloc[:,0:2]
     inner_track = track_points.iloc[:24,2:4]
 
-    print(outer_track)
-    
     outer_track_points = []
     inner_track_points = []
 
@@ -69,8 +81,15 @@ def get_track():
 
 def draw_track(surface, inner, outer):
 
-    pygame.draw.lines(surface, (255, 0, 0), True, outer)
-    pygame.draw.lines(surface, (255, 0, 0), True, inner)
+    pygame.gfxdraw.filled_polygon(surface, outer, (120, 120, 120))
+    pygame.gfxdraw.filled_polygon(surface, inner, (13, 156, 0))
+
+    pygame.draw.lines(surface, (255, 255, 0), True, outer, 5)
+    pygame.draw.lines(surface, (255, 255, 0), True, inner, 5)
+
+
+    pygame.draw.lines(surface, (255, 255, 255), True, outer, 5)
+    pygame.draw.lines(surface, (255, 255, 255), True, inner, 5)
     
 
 def generate_track(n_points, w, h):
@@ -111,6 +130,40 @@ def draw_track_arcs(surface, arcs):
     for a in arcs:
         pygame.draw.line(surface, (255, 0, 0), a[0], a[1], 20)
 
+def is_out(x, y, points):
+    counter = 0
+    for i in range(len(points)):
+        if (i != len(points) - 1): 
+            start = points[i]
+            end = points[i + 1]
+        else:
+            start = points[i]
+            end = points[0]
+
+        if (start[0] < x and end[0] < x):
+            counter = counter
+        else:
+
+            if (end[0] == start[0]):
+                k = 1000000000
+            elif(end[1] == start[1]):
+                k = 0.000000001
+            else:
+                k = (end[1] - start[1]) * 1.0 / (end[0] - start[0])
+            
+            b = end[1] - k * end[0]
+
+            xa = (b - y) / (-k)
+
+            if((xa < max(x, min(start[0], end[0]))) or (xa > max(end[0], start[0]))):
+                counter = counter
+            else:
+                counter += 1
+
+    if counter % 2 == 0:
+        return True
+    else:
+        return False
 
 def main():
     
@@ -129,7 +182,11 @@ def main():
 
     pygame.display.set_caption('Lörs')
 
-    new_box = box(100, 100, 10, 10, black, 1, 0)
+    new_box = box(230, 400, 40, 20, black, 1, 0)
+
+    auto = pygame.transform.scale(pygame.image.load("auto.jpg"), (40, 20))
+    auto = pygame.transform.rotate(auto, -90)
+    auto_rect = auto.get_rect()
 
     clock = pygame.time.Clock()
 
@@ -153,18 +210,24 @@ def main():
                     new_box.turn(turning)
                 if event.key == pygame.K_LEFT:
                     new_box.turn(-turning)
-
-        surface.fill(white)
+                
+        surface.fill((13, 156, 0))
         
         #draw_track_arcs(surface, track)
         #pygame.draw.lines(surface, (255, 0, 0), True, points)
         
-        draw_track(surface, outer, inner)
+        draw_track(surface, inner, outer)
 
         new_box.draw(surface)
 
         new_box.move()
         
+        if is_out(new_box.x, new_box.y, outer):
+            new_box.reset()
+
+        if not is_out(new_box.x, new_box.y, inner):
+            new_box.reset()
+
         new_box.x = new_box.x % display_width
         new_box.y = new_box.y % display_height
 
