@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+import pandas as pd
 
 from scipy.spatial import ConvexHull
 
@@ -45,6 +46,32 @@ class box:
     def accelerate(self, amount):
         self.a += amount
 
+def get_track():
+    track_points = pd.read_csv("rata.csv", header = None)
+
+    outer_track = track_points.iloc[:,0:2]
+    inner_track = track_points.iloc[:24,2:4]
+
+    print(outer_track)
+    
+    outer_track_points = []
+    inner_track_points = []
+
+
+    for i in range(len(outer_track)):
+        outer_track_points.append((outer_track.iloc[i, 0], outer_track.iloc[i, 1]))
+
+    for i in range(len(inner_track)):
+        inner_track_points.append((inner_track.iloc[i, 0], inner_track.iloc[i, 1]))
+
+
+    return outer_track_points, inner_track_points
+
+def draw_track(surface, inner, outer):
+
+    pygame.draw.lines(surface, (255, 0, 0), True, outer)
+    pygame.draw.lines(surface, (255, 0, 0), True, inner)
+    
 
 def generate_track(n_points, w, h):
 
@@ -89,8 +116,8 @@ def main():
     
     pygame.init()
 
-    display_width = 1200
-    display_height = 800
+    display_width = 1600
+    display_height = 1000
 
     acc = 0.2
     turning = 0.2
@@ -108,6 +135,8 @@ def main():
 
     running = True
     
+    outer, inner = get_track()
+
     track = generate_track(6, display_width, display_height)
 
     while running:    
@@ -127,8 +156,10 @@ def main():
 
         surface.fill(white)
         
-        draw_track_arcs(surface, track)
+        #draw_track_arcs(surface, track)
         #pygame.draw.lines(surface, (255, 0, 0), True, points)
+        
+        draw_track(surface, outer, inner)
 
         new_box.draw(surface)
 
