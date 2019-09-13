@@ -5,8 +5,10 @@ import pandas as pd
 
 from scipy.spatial import ConvexHull
 
+import matplotlib.pyplot as plt
+
 class box:
-    def __init__(self, x, y, h, w, color, vx, vy):
+    def __init__(self, x, y, h, w, color, vh, vw):
         self.x = x
         self.y = y
         self.h = h
@@ -23,7 +25,13 @@ class box:
 
         self.color = color
 
+        self.vh = vh
+        self.vw = vw
+
         self.corners = np.array([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
+        self.vision_corners = np.array([[-vw/2, vh], [vw/2, vh], [vw/2, 0], [-vw/2, 0]])
+
+        self.cur_corners = self.vision_corners
 
     def draw(self, surface):
         
@@ -31,10 +39,17 @@ class box:
 
         c = self.corners @ -np.array([[np.cos(draw_dir), -np.sin(draw_dir)], [np.sin(draw_dir), np.cos(draw_dir)]])
         
-        corners = [[c[i,0] + self.x, c[i,1] + self.y] for i in range(4)]
+        vc = self.vision_corners @ -np.array([[np.cos(draw_dir), -np.sin(draw_dir)], [np.sin(draw_dir), np.cos(draw_dir)]])
+        
 
+        corners = [[c[i,0] + self.x, c[i,1] + self.y] for i in range(4)]
+        
+        self.cur_corners = [[vc[i,0] + self.x, vc[i,1] + self.y] for i in range(4)]
+         
         pygame.gfxdraw.filled_polygon(surface, corners, (255, 255, 0))
         pygame.draw.lines(surface, (0,0,0), True, corners, 3)
+        pygame.draw.lines(surface, (0,0,0), True, self.cur_corners, 3)
+        
         
     def move(self):
         self.v += self.a
@@ -74,7 +89,6 @@ def get_track():
     for i in range(len(inner_track)):
         inner_track_points.append((inner_track.iloc[i, 0], inner_track.iloc[i, 1]))
 
-
     return outer_track_points, inner_track_points
 
 def draw_track(surface, inner, outer):
@@ -84,7 +98,6 @@ def draw_track(surface, inner, outer):
 
     pygame.draw.lines(surface, (255, 255, 0), True, outer, 5)
     pygame.draw.lines(surface, (255, 255, 0), True, inner, 5)
-
 
     pygame.draw.lines(surface, (255, 255, 255), True, outer, 5)
     pygame.draw.lines(surface, (255, 255, 255), True, inner, 5)
@@ -124,6 +137,18 @@ def is_out(x, y, points):
     else:
         return False
 
+def get_vision(surface, box):
+    pa = pygame.PixelArray(surface)
+
+    all = []
+    for i in range(len(pa[0])):
+        for j in range(len(pa[1])):
+            if not is_out(i, j, box.cur_corners):
+                all.append(pa[i,j])
+    
+    plt.imshow(np.array(all).reshape(3, -1))
+    plt.show()
+
 def main():
     
     pygame.init()
@@ -138,7 +163,7 @@ def main():
 
     pygame.display.set_caption('Lörs')
 
-    new_box = box(230, 400, 40, 20, (0,0,0), 1, 0)
+    new_box = box(230, 400, 40, 20, (0,0,0), 200, 300)
 
     clock = pygame.time.Clock()
 
@@ -177,6 +202,8 @@ def main():
 
         new_box.x = new_box.x % display_width
         new_box.y = new_box.y % display_height
+
+        get_vision(surface, new_box)
 
         pygame.display.update()
         clock.tick(60)
