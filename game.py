@@ -36,8 +36,6 @@ class box:
         pygame.gfxdraw.filled_polygon(surface, corners, (255, 255, 0))
         pygame.draw.lines(surface, (0,0,0), True, corners, 3)
         
-
-
     def move(self):
         self.v += self.a
 
@@ -91,45 +89,6 @@ def draw_track(surface, inner, outer):
     pygame.draw.lines(surface, (255, 255, 255), True, outer, 5)
     pygame.draw.lines(surface, (255, 255, 255), True, inner, 5)
     
-
-def generate_track(n_points, w, h):
-
-    points = np.random.rand(n_points, 2)
-    
-    points[:,0] = (points[:,0] * (w - 100)) + 50
-    points[:,1] = (points[:,1] * (h - 100)) + 50
-
-    hull = ConvexHull(points)
-
-    arcs = []
-    points_list = []
-
-    for s in hull.simplices:
-        midpoint = [points[s, 0].mean() + (np.random.rand() * w) / 8, points[s, 1].mean() + (np.random.rand() * h) / 8]
-        arc1_s = [points[s, 0][0], midpoint[0]]
-        arc1_e = [points[s, 1][0], midpoint[1]]
-        arc2_s = [points[s, 0][1], midpoint[0]]
-        arc2_e = [points[s, 1][1], midpoint[1]]
-
-        arc1_s = [points[s, 0][0], points[s, 1][0]]
-        arc1_e = [midpoint[0], midpoint[1]]
-        arc2_s = [midpoint[0], midpoint[1]]
-        arc2_e = [points[s, 0][1], points[s, 1][1]]
-
-        arcs.append([arc1_s, arc1_e])
-        arcs.append([arc2_s, arc2_e])
-
-        points_list.append(arc1_s)
-        points_list.append(midpoint)
-        points_list.append(arc2_e)
-
-    return arcs
-
-def draw_track_arcs(surface, arcs):
-
-    for a in arcs:
-        pygame.draw.line(surface, (255, 0, 0), a[0], a[1], 20)
-
 def is_out(x, y, points):
     counter = 0
     for i in range(len(points)):
@@ -175,26 +134,17 @@ def main():
     acc = 0.2
     turning = 0.2
 
-    black = (0,0,0)
-    white = (255,255,255)
-    
     surface = pygame.display.set_mode((display_width, display_height))
 
     pygame.display.set_caption('Lörs')
 
-    new_box = box(230, 400, 40, 20, black, 1, 0)
-
-    auto = pygame.transform.scale(pygame.image.load("auto.jpg"), (40, 20))
-    auto = pygame.transform.rotate(auto, -90)
-    auto_rect = auto.get_rect()
+    new_box = box(230, 400, 40, 20, (0,0,0), 1, 0)
 
     clock = pygame.time.Clock()
 
     running = True
     
     outer, inner = get_track()
-
-    track = generate_track(6, display_width, display_height)
 
     while running:    
         
@@ -212,9 +162,6 @@ def main():
                     new_box.turn(-turning)
                 
         surface.fill((13, 156, 0))
-        
-        #draw_track_arcs(surface, track)
-        #pygame.draw.lines(surface, (255, 0, 0), True, points)
         
         draw_track(surface, inner, outer)
 
