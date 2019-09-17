@@ -197,7 +197,7 @@ class game:
 
         self.outer, self.inner = get_track()
 
-        self.draw = draw
+        self.graphics = draw
 
     def get_vision(self):
         pa = np.array(pygame.PixelArray(self.surface))
@@ -232,7 +232,8 @@ class game:
             reward = -1
             done = True
 
-        self.draw()
+        if self.graphics:
+            self.draw()
         
         self.clock.tick(30)
 

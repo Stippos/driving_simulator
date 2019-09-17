@@ -169,7 +169,7 @@ def linear_unbin(arr):
 def run_ddqn():
 
     config = tf.ConfigProto()
-    config.gpu_options(allow_growth) = True
+    config.gpu_options(allow_growth = True)
 
     sess = tf.Session(config = config)
 
@@ -211,7 +211,7 @@ def run_ddqn():
 
             x_t1 = agent.process_image(next_obs)
 
-            xt1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1))
+            xt1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1)
 
             s_t1 = np.append(x_t1, s_t[:, :, :, :3], axis=3)
 
