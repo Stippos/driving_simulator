@@ -29,9 +29,8 @@ class box:
         self.vw = vw
 
         self.corners = np.array([[-w/2, -h/2], [w/2, -h/2], [w/2, h/2], [-w/2, h/2]])
-        self.vision_corners = np.array([[-vw/2, vh], [vw/2, vh], [vw/2, 0], [-vw/2, 0]])
-
-        self.cur_corners = self.vision_corners
+        self.vision_limits = np.array([[-vw/2, -vh/2], [vw/2, -vh/2], [vw/2, vh/2], [-vw/2, vh/2]])
+        self.vision_corners = self.vision_limits
 
     def draw(self, surface):
         
@@ -39,17 +38,20 @@ class box:
 
         c = self.corners @ -np.array([[np.cos(draw_dir), -np.sin(draw_dir)], [np.sin(draw_dir), np.cos(draw_dir)]])
         
-        vc = self.vision_corners @ -np.array([[np.cos(draw_dir), -np.sin(draw_dir)], [np.sin(draw_dir), np.cos(draw_dir)]])
-        
-
         corners = [[c[i,0] + self.x, c[i,1] + self.y] for i in range(4)]
         
-        self.cur_corners = [[vc[i,0] + self.x, vc[i,1] + self.y] for i in range(4)]
+        vc = self.vision_limits
+
+        self.vision_corners = [[vc[i,0] + self.x, vc[i,1] + self.y] for i in range(4)]
          
         pygame.gfxdraw.filled_polygon(surface, corners, (255, 255, 0))
         pygame.draw.lines(surface, (0,0,0), True, corners, 3)
-        pygame.draw.lines(surface, (0,0,0), True, self.cur_corners, 3)
+        pygame.draw.lines(surface, (0,0,0), True, self.vision_corners , 3)
         
+        font = pygame.font.Font('freesansbold.ttf', 12) 
+        text = font.render("Speed: {}, Acc: {}, Direction: {}".format(round(self.v, 2), round(self.a, 2), round(self.dir, 2)), True, (0,0,0))
+        surface.blit(text, (10, 10))
+
         
     def move(self):
         self.v += self.a
@@ -71,7 +73,7 @@ class box:
         self.v = 0
         self.dir = 0
         self.a = 0
-    
+
 
 def get_track():
     track_points = pd.read_csv("rata.csv", header = None)
@@ -138,75 +140,129 @@ def is_out(x, y, points):
         return False
 
 def get_vision(surface, box):
-    pa = pygame.PixelArray(surface)
-
-    all = []
-    for i in range(len(pa[0])):
-        for j in range(len(pa[1])):
-            if not is_out(i, j, box.cur_corners):
-                all.append(pa[i,j])
     
-    plt.imshow(np.array(all).reshape(3, -1))
-    plt.show()
+    global image
 
-def main():
-    
-    pygame.init()
+    pa = np.array(pygame.PixelArray(surface))
 
-    display_width = 1600
-    display_height = 1000
+    l = box.vision_corners
+
+    left = int(l[0][0])
+    right = int(l[1][0])
+    top = int(l[0][1])
+    bottom = int(l[3][1])  
+
+    vision = pa[left:right, top:bottom].T
+
+    if not image:
+        image = plt.imshow(vision)
+    else:
+        image.set_data(vision)
+    plt.show(block = False)
+
+def control(box, style):
+
+    global running 
 
     acc = 0.2
     turning = 0.2
 
-    surface = pygame.display.set_mode((display_width, display_height))
-
-    pygame.display.set_caption('Lörs')
-
-    new_box = box(230, 400, 40, 20, (0,0,0), 200, 300)
-
-    clock = pygame.time.Clock()
-
-    running = True
-    
-    outer, inner = get_track()
-
-    while running:    
-        
+    if style == "manual":
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    new_box.accelerate(acc)
+                    box.accelerate(acc)
                 if event.key == pygame.K_DOWN:
-                    new_box.accelerate(-acc)
+                    box.accelerate(-acc)
                 if event.key == pygame.K_RIGHT:
-                    new_box.turn(turning)
+                    box.turn(turning)
                 if event.key == pygame.K_LEFT:
-                    new_box.turn(-turning)
-                
-        surface.fill((13, 156, 0))
+                    box.turn(-turning)
+
+
+class game:
+
+    def __init__(self, draw = True):
+        self.display_width = 1600
+        self.display_height = 1000
+        self.surface = pygame.display.set_mode((self.display_width, self.display_height))
+
+        self.car = box(230, 400, 40, 20, (0,0,0), 300, 300)
+
+        self.clock = pygame.time.Clock()
+
+        self.running = True
+
+        self.outer, self.inner = get_track()
+
+        self.draw = draw
+
+    def get_vision(self):
+        pa = np.array(pygame.PixelArray(self.surface))
+
+        l = self.car.vision_corners
+
+        left = int(l[0][0])
+        right = int(l[1][0])
+        top = int(l[0][1])
+        bottom = int(l[3][1])  
+
+        return pa[left:right, top:bottom].T
+
+    def reset(self):
+        self.car.reset()
+
+        return self.get_vision()
+
+
+    def step(self, steering, acc):
+
+        self.car.accelerate(acc)
+        self.car.turn(steering)
+        self.car.move()
+
+        reward = self.car.v
+        obs = self.get_vision()
+        done = False
+
+        if is_out(self.car.x, self.car.y, self.outer) or not is_out(self.car.x, self.car.y, self.inner):
+            self.car.reset()
+            reward = -1
+            done = True
+
+        self.draw()
         
-        draw_track(surface, inner, outer)
+        self.clock.tick(30)
 
-        new_box.draw(surface)
+        return obs, reward, done, 
 
-        new_box.move()
-        
-        if is_out(new_box.x, new_box.y, outer):
-            new_box.reset()
 
-        if not is_out(new_box.x, new_box.y, inner):
-            new_box.reset()
-
-        new_box.x = new_box.x % display_width
-        new_box.y = new_box.y % display_height
-
-        get_vision(surface, new_box)
+    def draw(self):
+        self.surface.fill((13, 156, 0))
+        draw_track(self.surface, self.inner, self.outer)
+        self.car.draw(self.surface)
 
         pygame.display.update()
-        clock.tick(60)
+
+
+
+
+def main():
+    
+    pygame.init()
+    
+    new_game = game()
+    
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            
+        new_game.step(np.random.rand() / 5 - 0.1, np.random.rand() / 5 - 0.1)
 
 if __name__ == "__main__":
     main()
+    plt.show()
