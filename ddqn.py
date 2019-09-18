@@ -4,9 +4,13 @@ import random
 import argparse
 import signal
 
+import warnings
+
 import numpy as np
 import gym
 import cv2
+
+import matplotlib.pyplot as plt
 
 import skimage as skimage
 from skimage import transform, color, exposure
@@ -31,15 +35,17 @@ import game
 
 EPISODES = 10000
 
-img_rows = img_cols = 300
+img_rows = img_cols = 80
 
 img_channels = 4
+
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 class agent:
 
     def __init__(self, state_size, action_space, train = True):
         self.t = 0
-        self.max_q = 0
+        self.max_Q = 0
         self.train = train
         
         self.action_space = action_space
@@ -92,6 +98,10 @@ class agent:
         return model
 
     def process_image(self, obs):
+        #result = cv2.resize(obs, (img_rows, img_cols))
+
+        #plt.imshow(result)
+        #plt.show()
         return cv2.resize(obs, (img_rows, img_cols))
 
     def update_target_model(self):
@@ -100,9 +110,10 @@ class agent:
 
     def get_action(self, s_t):
         if np.random.rand() <= self.epsilon:
-            return self.action_space.sample()[0]
+            return random.sample(list(self.action_space), 1)[0]
+            #return np.random.rand() - 0.5
         else:
-            q_valu = self.model.predict(s_t)
+            q_value = self.model.predict(s_t)
 
             return linear_unbin(q_value[0])
 
@@ -112,7 +123,7 @@ class agent:
     
     def update_epsilon(self):
         if self.epsilon > self.epsilon_min:
-            self.epsilon -= (self.initial_epsilon - self.epsilon) / self.explore
+            self.epsilon -= (self.initial_epsilon - self.epsilon_min) / self.explore
 
     def train_replay(self):
 
@@ -149,12 +160,14 @@ class agent:
         self.model.load_weights(name)
 
     def save_model(self, name):
+        warnings.filterwarnings("ignore")
         self.model.save_weights(name)
+        warnings.filterwarnings("default")
 
 def linear_bin(a):
     
-    a = a + 1
-    b = round(a / 7)
+    a = (a * 10) + 1
+    b = round(a * 7)
     arr = np.zeros(15)
     arr[int(b)] = 1
 
@@ -163,13 +176,13 @@ def linear_bin(a):
 def linear_unbin(arr):
 
     b = np.argmax(arr) 
-    a = b * 7 + 1
-    return a
+    interval = np.arange(15) / 70 - 0.10
+    return interval[b]
 
 def run_ddqn():
 
     config = tf.ConfigProto()
-    config.gpu_options(allow_growth = True)
+    config.gpu_options.allow_growth = True
 
     sess = tf.Session(config = config)
 
@@ -177,7 +190,7 @@ def run_ddqn():
 
     state_size = (img_rows, img_cols, img_channels)
 
-    action_space = np.array([0])
+    action_space = np.arange(15) / 70 - 0.10
 
     env = game.game()
 
@@ -187,7 +200,7 @@ def run_ddqn():
 
     for e in range(EPISODES):
 
-        print("Epsode 1: ", e)
+        print("Epsode: ", e)
 
         done = False
 
@@ -195,7 +208,7 @@ def run_ddqn():
 
         episode_len = 0
 
-        x_t = agent.process_image(obs)
+        x_t = a.process_image(obs)
 
         s_t = np.stack((x_t, x_t, x_t, x_t), axis = 2)
 
@@ -203,46 +216,44 @@ def run_ddqn():
 
         while not done:
 
-            steering = agent.get_action(s_t)
+            steering = a.get_action(s_t)
 
-            action = [steering, 1]
+            new_obs, reward, done = env.step(steering, 1)
 
-            new_obs, reward, done = env.step(action)
+            x_t1 = a.process_image(new_obs)
 
-            x_t1 = agent.process_image(next_obs)
-
-            xt1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1)
+            x_t1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1)
 
             s_t1 = np.append(x_t1, s_t[:, :, :, :3], axis=3)
 
-            agent.replay_memory(s_t, np.argmax(linear_bin(steering)), reward, s_t1, done)
+            a.replay_memory(s_t, np.argmax(linear_bin(steering)), reward, s_t1, done)
 
-            agent.update_epsilon()
+            a.update_epsilon()
 
-            if agent.train:
-                anget.train_replay()
+            if a.train:
+                a.train_replay()
 
             s_t = s_t1
-            agent.t += 1
+            a.t += 1
 
             episode_len += 1
 
-            if agent.t % 30 == 0:
-                print("EPISODE",  e, "TIMESTEP", agent.t,"/ ACTION", action, "/ REWARD", reward, "/ EPISODE LENGTH", episode_len, "/ Q_MAX " , agent.max_Q)
+            if a.t % 30 == 0:
+                print("EPISODE",  e, "TIMESTEP", a.t,"/ ACTION", steering, "/ REWARD", reward, "/ EPISODE LENGTH", episode_len, "/ Q_MAX " , a.max_Q)
 
             if done:
-                agent.update_target_model()
+                a.update_target_model()
 
                 episodes.append(e)
 
-                if agent.train:
-                    agent.save_model("Malli")
+                if a.train:
+                    a.save_model("Malli2")
 
-                print("episode:", e, "  memory length:", len(agent.memory),
-                        "  epsilon:", agent.epsilon, " episode length:", episode_len)
-
-
+                print("episode:", e, "  memory length:", len(a.memory),
+                        "  epsilon:", a.epsilon, " episode length:", episode_len)
 
 
+if __name__ == "__main__":
+    run_ddqn()
 
 
