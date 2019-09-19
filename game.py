@@ -228,7 +228,7 @@ class game:
         car_x = 230 / 1600 * self.display_width
         car_y = 400 / 1000 * self.display_height
 
-        self.car = box(car_x, car_y, 40, 20, (0,0,0), 300, 300)
+        self.car = box(car_x, car_y, 40, 20, (0,0,0), 600, 300)
 
         self.clock = pygame.time.Clock()
 
@@ -283,20 +283,22 @@ class game:
         im = np.stack((red, green, blue), axis = 2)
         im = np.dot(im, [0.299, 0.587, 0.114])
 
-        return im
-        
+        height = im.shape[0]
+
+        return im[:height//2, :]
+        #return im
 
     def reset(self):
         self.car.reset()
 
         return self.get_vision()
 
-    def step(self, steering, acc):
+    def step(self, steering, acc, obs):
         
         start_reward = self.reward()
 
-        for i in range(2):
-            obs, reward, done = self.frame(steering, acc) 
+        for i in range(1):
+            obs, reward, done = self.frame(steering, acc, obs) 
             if not done:
                 continue
             else:
@@ -309,49 +311,55 @@ class game:
         outer = distance(self.car.x, self.car.y, self.outer)
         inner = distance(self.car.x, self.car.y, self.inner)
         
-        reward = (1 - abs(outer - inner) / abs(outer + inner))**2
+        if self.car.v < 0:
+            reward = self.car.v
+        else:
+            reward = (1 - abs(outer - inner) / abs(outer + inner)) * self.car.v
         
         #print("Distance from outer: {}, Distance from inner: {}, Reward: {}".format(outer, inner, reward))
 
         return reward
 
-    def frame(self, steering, acc):
+    def frame(self, steering, acc, obs):
 
         self.car.accelerate(acc)
         self.car.turn(steering)
         self.car.move()
 
         done = False
-        reward = 0
+        rwd = self.reward()
 
 
         if is_out(self.car.x, self.car.y, self.outer) or not is_out(self.car.x, self.car.y, self.inner):
             self.car.reset()
-            reward = -1
+            rwd = -1
             done = True
 
         if self.graphics:
-            self.draw()
+            self.draw(obs)
         
-        reward += self.reward()
+        
         obs = self.get_vision()
         
-
         self.clock.tick(120)
 
-        return obs, reward, done, 
+        return obs, rwd, done, 
 
 
-    def draw(self):
+    def draw(self, obs):
         self.surface.fill((13, 156, 0))
         draw_track(self.surface, self.inner, self.outer)
         self.car.draw(self.surface)
+
+        surf = pygame.surfarray.make_surface(obs)
+        self.surface.blit(surf, (1520,0))
 
         font = pygame.font.Font('freesansbold.ttf', 12) 
         text = font.render("Speed: {}, Acc: {}, Direction: {}, Reward: {}".format(round(self.car.v, 2), round(self.car.a, 2), round(self.car.dir, 2), round(self.reward(), 2)), True, (0,0,0))
         self.surface.blit(text, (10, 10))
 
         pygame.display.update()
+
 
 
 

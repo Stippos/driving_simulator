@@ -10,6 +10,8 @@ import numpy as np
 import gym
 import cv2
 
+import pygame
+
 import matplotlib.pyplot as plt
 
 import skimage as skimage
@@ -93,7 +95,7 @@ class agent:
         model.add(Activation('relu'))
 
         # 15 categorical bins for Steering angles
-        model.add(Dense(15, activation="linear")) 
+        model.add(Dense(25, activation="linear")) 
 
         adam = Adam(lr=self.learning_rate)
         model.compile(loss='mse',optimizer=adam)
@@ -123,12 +125,12 @@ class agent:
 
     def get_action(self, s_t):
         if np.random.rand() <= self.epsilon:
-            return random.sample(list(self.action_space), 1)[0]
+            return random.sample(range(len(self.action_space)), 1)[0]
             #return np.random.rand() - 0.5
         else:
             q_value = self.model.predict(s_t)
-
-            return linear_unbin(q_value[0])
+            #print(np.argmax(q_value))
+            return np.argmax(q_value)
 
 
     def replay_memory(self, state, action, reward, next_state, done):
@@ -203,7 +205,12 @@ def run_ddqn():
 
     state_size = (img_rows, img_cols, img_channels)
 
-    action_space = np.arange(15) / 70 - 0.10
+    s = np.linspace(-0.1, 0.1, 5)
+    t = np.linspace(-1, 3, 5)
+
+    mesh = np.meshgrid(s, t)
+
+    action_space = np.array(list(zip(mesh[0].flatten().tolist(), mesh[1].flatten().tolist())))
 
     env = game.game()
 
@@ -216,6 +223,9 @@ def run_ddqn():
     image = None
 
     for e in range(EPISODES):
+
+        #pygame.init()
+        #display = pygame.display.set_mode((img_rows, img_cols))
 
         print("Epsode: ", e)
 
@@ -231,39 +241,50 @@ def run_ddqn():
 
         s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
 
-        im = plt.imshow(x_t)
-        plt.show(block = False)
+        # im = plt.imshow(x_t)
+        # plt.show(block = False)
+
+        episode_memory = []
 
         while not done:
 
-            steering = a.get_action(s_t)
+            idx = a.get_action(s_t)
 
-            new_obs, reward, done = env.step(steering, 1)
+            steering, throttle = action_space[idx]
+
+            new_obs, reward, done = env.step(steering, throttle, x_t.T)
+
+            #surf = pygame.surfarray.make_surface(new_obs)
+            #display.blit(surf, (0,0))
+            #pygame.display.update()
 
             x_t1 = a.process_image(new_obs)
-
-            im.set_data(x_t1)
-            plt.pause(0.001)
-            plt.draw()
+            x_t = x_t1
+            # im.set_data(x_t1)
+            # plt.pause(0.001)
+            # plt.draw()
 
             x_t1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1)
 
             s_t1 = np.append(x_t1, s_t[:, :, :, :3], axis=3)
 
-            a.replay_memory(s_t, np.argmax(linear_bin(steering)), reward, s_t1, done)
-
-            a.update_epsilon()
+            #episode_memory.insert(0, (s_t, idx, reward, s_t1, done))
+            
+            a.replay_memory(s_t, idx, reward, s_t1, done)
 
             if a.train:
                 a.train_replay()
+            
+            a.update_epsilon()
+            
 
             s_t = s_t1
             a.t += 1
 
             episode_len += 1
 
-            if a.t % 30 == 0:
-                print("EPISODE",  e, "TIMESTEP", a.t,"/ ACTION", steering, "/ REWARD", reward, "/ EPISODE LENGTH", episode_len, "/ Q_MAX " , a.max_Q)
+            if a.t % 10 == 0:
+                print("EPISODE",  e, "TIMESTEP", a.t,"/ ACTION", round(steering, 2), " ", round(throttle, 2), "/ REWARD", reward, "/ EPISODE LENGTH", episode_len, "/ Q_MAX " , a.max_Q)
 
             if done:
                 a.update_target_model()
@@ -276,6 +297,12 @@ def run_ddqn():
                 print("episode:", e, "  memory length:", len(a.memory),
                         "  epsilon:", a.epsilon, " episode length:", episode_len)
 
+        # for i, m in enumerate(episode_memory):
+            
+        #     discount = max(0, (1 - i / 4))
+        #     a.replay_memory(m[0], m[1], m[2] - discount, m[3], m[4])
+
+        
 
 if __name__ == "__main__":
     run_ddqn()
