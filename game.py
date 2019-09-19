@@ -4,11 +4,17 @@ import numpy as np
 import pandas as pd
 
 from scipy.spatial import ConvexHull
+from scipy.ndimage import rotate
+
 
 import matplotlib.pyplot as plt
 
 class box:
     def __init__(self, x, y, h, w, color, vh, vw):
+
+        self.init_x = x 
+        self.init_y = y
+        
         self.x = x
         self.y = y
         self.h = h
@@ -47,7 +53,7 @@ class box:
          
         pygame.gfxdraw.filled_polygon(surface, corners, (255, 255, 0))
         pygame.draw.lines(surface, (0,0,0), True, corners, 3)
-        pygame.draw.lines(surface, (0,0,0), True, self.vision_corners , 3)
+        #pygame.draw.lines(surface, (0,0,0), True, self.vision_corners , 3)
         
 
         
@@ -74,8 +80,8 @@ class box:
         self.a = amount
 
     def reset(self):
-        self.x = 230
-        self.y = 600
+        self.x = self.init_x
+        self.y = self.init_y
         self.v = 0
         self.dir = 0
         self.a = 0
@@ -85,7 +91,7 @@ class box:
         self.vision_corners = [[vc[i,0] + self.x, vc[i,1] + self.y] for i in range(4)]
 
 
-def get_track():
+def get_track(w, h):
     track_points = pd.read_csv("rata.csv", header = None)
 
     outer_track = track_points.iloc[:,0:2]
@@ -96,23 +102,20 @@ def get_track():
 
 
     for i in range(len(outer_track)):
-        outer_track_points.append((outer_track.iloc[i, 0], outer_track.iloc[i, 1]))
+        outer_track_points.append((outer_track.iloc[i, 0] / 1600 * w, outer_track.iloc[i, 1] / 1000 * h))
 
     for i in range(len(inner_track)):
-        inner_track_points.append((inner_track.iloc[i, 0], inner_track.iloc[i, 1]))
+        inner_track_points.append((inner_track.iloc[i, 0] / 1600 * w, inner_track.iloc[i, 1] / 1000 * h))
 
     return outer_track_points, inner_track_points
 
 def draw_track(surface, inner, outer):
 
-    pygame.gfxdraw.filled_polygon(surface, outer, (120, 120, 120))
+    pygame.gfxdraw.filled_polygon(surface, outer, (60, 60, 60))
     pygame.gfxdraw.filled_polygon(surface, inner, (13, 156, 0))
 
-    pygame.draw.lines(surface, (255, 255, 0), True, outer, 5)
-    pygame.draw.lines(surface, (255, 255, 0), True, inner, 5)
-
-    pygame.draw.lines(surface, (255, 255, 255), True, outer, 5)
-    pygame.draw.lines(surface, (255, 255, 255), True, inner, 5)
+    pygame.draw.lines(surface, (255, 255, 255), True, outer, 8)
+    pygame.draw.lines(surface, (255, 255, 255), True, inner, 8)
     
 def is_out(x, y, points):
     counter = 0
@@ -149,34 +152,6 @@ def is_out(x, y, points):
     else:
         return False
 
-def get_vision(surface, box):
-    
-    global image
-
-    pa = np.array(pygame.PixelArray(surface))
-
-    l = box.vision_corners
-
-    left = int(l[0][0])
-    right = int(l[1][0])
-    top = int(l[0][1])
-    bottom = int(l[3][1])  
-
-    vision = pa[left:right, top:bottom].T
-
-    red = vision >> 16
-    green = (vision >> 8) - (red << 8)
-    blue = vision - (red << 16) - (green << 8)
-
-    im = np.stack((red, green, blue), axis = 2)
-    
-    im = np.dot(im, [0.299, 0.587, 0.114])
-
-    print(im.shape)
-    print(im[0, 0])
-
-    plt.imshow(im, cmap = "Greys_r")
-    plt.show()
 
 def control(box, style):
 
@@ -250,13 +225,16 @@ class game:
         self.display_height = 1000
         self.surface = pygame.display.set_mode((self.display_width, self.display_height))
 
-        self.car = box(230, 400, 40, 20, (0,0,0), 300, 300)
+        car_x = 230 / 1600 * self.display_width
+        car_y = 400 / 1000 * self.display_height
+
+        self.car = box(car_x, car_y, 40, 20, (0,0,0), 300, 300)
 
         self.clock = pygame.time.Clock()
 
         self.running = True
 
-        self.outer, self.inner = get_track()
+        self.outer, self.inner = get_track(self.display_width, self.display_height)
 
         self.graphics = draw
 
@@ -266,19 +244,43 @@ class game:
 
         l = self.car.vision_corners
 
-        left = int(l[0][0])
-        right = int(l[1][0])
-        top = int(l[0][1])
-        bottom = int(l[3][1])  
+        result = np.zeros((self.car.vw, self.car.vh))
+
+        left = max(0, int(l[0][0]))
+        right = min(self.surface.get_width(), int(l[1][0]))
+        top = max(0, int(l[0][1]))
+        bottom = min(self.surface.get_height(), int(l[3][1]))   
+
+        pad_left = 0
+        pad_right = 0
+        pad_top = 0
+        pad_bottom = 0
+
+        if left > l[0][0]:
+            pad_left = int(abs(l[0][0]))
+        elif right < l[1][0]:
+            pad_right = int(l[1][0] - right)
+
+        if top > l[0][1]:
+            pad_top = int(abs(l[0][1]))
+        elif right < l[3][1]:
+            pad_bottom = int(l[3][1] - bottom)
+
+        # print(pad_left)
+        # print(pad_right)
+        # print(pad_top) 
+        # print(pad_bottom)
 
         vision = pa[left:right, top:bottom].T
+        vision = np.pad(vision, ((pad_top, pad_bottom), (pad_left, pad_right)), mode="edge")
+        
+        vision = rotate(vision, self.car.dir / np.pi * 180, reshape = False, mode = "nearest")
 
         red = vision >> 16
         green = (vision >> 8) - (red << 8)
         blue = vision - (red << 16) - (green << 8)
 
         im = np.stack((red, green, blue), axis = 2)
-        
         im = np.dot(im, [0.299, 0.587, 0.114])
 
         return im
@@ -300,7 +302,7 @@ class game:
             else:
                 break
         
-        return obs, reward, done
+        return obs, reward - start_reward, done
 
     def reward(self):
 
@@ -335,7 +337,7 @@ class game:
         obs = self.get_vision()
         
 
-        self.clock.tick(30)
+        self.clock.tick(120)
 
         return obs, reward, done, 
 

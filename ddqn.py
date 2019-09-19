@@ -35,11 +35,14 @@ import game
 
 EPISODES = 10000
 
-img_rows = img_cols = 80
+img_rows = img_cols = 70
 
 img_channels = 4
 
 tf.logging.set_verbosity(tf.logging.ERROR)
+
+global image
+image = None
 
 class agent:
 
@@ -98,11 +101,21 @@ class agent:
         return model
 
     def process_image(self, obs):
-        #result = cv2.resize(obs, (img_rows, img_cols))
 
-        #plt.imshow(result)
-        #plt.show()
-        return cv2.resize(obs, (img_rows, img_cols))
+        global image
+
+        result = cv2.resize(obs, (img_rows, img_cols))
+
+        # if image == None:
+        #     image = plt.imshow(result)
+        # else:
+        #     image.set_data(result)
+        # plt.pause(0.1)
+        # plt.draw()
+        # # plt.imshow(result)
+        # # plt.show()
+        return result
+        #return cv2.resize(obs, (img_rows, img_cols))
 
     def update_target_model(self):
         self.target_model.set_weights(self.model.get_weights())
@@ -198,6 +211,10 @@ def run_ddqn():
 
     episodes = []
 
+    global image
+
+    image = None
+
     for e in range(EPISODES):
 
         print("Epsode: ", e)
@@ -214,6 +231,9 @@ def run_ddqn():
 
         s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
 
+        im = plt.imshow(x_t)
+        plt.show(block = False)
+
         while not done:
 
             steering = a.get_action(s_t)
@@ -221,6 +241,10 @@ def run_ddqn():
             new_obs, reward, done = env.step(steering, 1)
 
             x_t1 = a.process_image(new_obs)
+
+            im.set_data(x_t1)
+            plt.pause(0.001)
+            plt.draw()
 
             x_t1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1)
 
@@ -247,7 +271,7 @@ def run_ddqn():
                 episodes.append(e)
 
                 if a.train:
-                    a.save_model("Malli2")
+                    a.save_model("Malli4")
 
                 print("episode:", e, "  memory length:", len(a.memory),
                         "  epsilon:", a.epsilon, " episode length:", episode_len)
