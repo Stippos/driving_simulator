@@ -1,2 +1,2 @@
-model_checkpoint_path: "Malli"
-all_model_checkpoint_paths: "Malli"
+model_checkpoint_path: "Malli_just_negative_medium_long_penalty"
+all_model_checkpoint_paths: "Malli_just_negative_medium_long_penalty"

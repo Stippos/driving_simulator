@@ -27,7 +27,7 @@ class box:
         self.v = 0
         self.a = 0
 
-        self.dir = 0
+        self.dir = np.pi
 
         self.color = color
 
@@ -83,7 +83,7 @@ class box:
         self.x = self.init_x
         self.y = self.init_y
         self.v = 0
-        self.dir = 0
+        self.dir = np.pi
         self.a = 0
 
         vc = self.vision_limits
@@ -114,8 +114,8 @@ def draw_track(surface, inner, outer):
     pygame.gfxdraw.filled_polygon(surface, outer, (60, 60, 60))
     pygame.gfxdraw.filled_polygon(surface, inner, (13, 156, 0))
 
-    pygame.draw.lines(surface, (255, 255, 255), True, outer, 8)
-    pygame.draw.lines(surface, (255, 255, 255), True, inner, 8)
+    pygame.draw.lines(surface, (255, 255, 255), True, outer, 5)
+    pygame.draw.lines(surface, (255, 255, 255), True, inner, 5)
     
 def is_out(x, y, points):
     counter = 0
@@ -227,6 +227,10 @@ class game:
 
         car_x = 230 / 1600 * self.display_width
         car_y = 400 / 1000 * self.display_height
+        # 
+
+        # car_x = 1420 / 1600 * self.display_width
+        # car_y = 800 / 1000 * self.display_height
 
         self.car = box(car_x, car_y, 40, 20, (0,0,0), 600, 300)
 
@@ -293,31 +297,35 @@ class game:
 
         return self.get_vision()
 
-    def step(self, steering, acc, obs):
+    def step(self, steering, acc, given_obs):
         
         start_reward = self.reward()
 
-        for i in range(1):
-            obs, reward, done = self.frame(steering, acc, obs) 
+        for i in range(2):
+            obs, reward, done = self.frame(steering, acc, given_obs) 
             if not done:
                 continue
             else:
                 break
         
-        return obs, reward - start_reward, done
+        print(reward)
+
+        return obs, reward, done
 
     def reward(self):
 
         outer = distance(self.car.x, self.car.y, self.outer)
         inner = distance(self.car.x, self.car.y, self.inner)
         
-        if self.car.v < 0:
-            reward = self.car.v
-        else:
-            reward = (1 - abs(outer - inner) / abs(outer + inner)) * self.car.v
+        # if self.car.v < 0:
+        #     reward = self.car.v
+        # else:
+        #     reward = (1 - abs(outer - inner) / abs(outer + inner)) * self.car.v
         
-        #print("Distance from outer: {}, Distance from inner: {}, Reward: {}".format(outer, inner, reward))
+        reward = self.car.v
 
+        #print("Distance from outer: {}, Distance from inner: {}, Reward: {}".format(outer, inner, reward))
+        
         return reward
 
     def frame(self, steering, acc, obs):
@@ -332,7 +340,7 @@ class game:
 
         if is_out(self.car.x, self.car.y, self.outer) or not is_out(self.car.x, self.car.y, self.inner):
             self.car.reset()
-            rwd = -1
+            rwd = 0
             done = True
 
         if self.graphics:

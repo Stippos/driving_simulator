@@ -37,7 +37,7 @@ import game
 
 EPISODES = 10000
 
-img_rows = img_cols = 70
+img_rows = img_cols = 80
 
 img_channels = 4
 
@@ -65,7 +65,7 @@ class agent:
         else:
             self.epsilon = 1e-6
             self.initial_epsilon = 1e-6
-        self.epsilon_min = 0.02
+        self.epsilon_min = 0.05
         self.batch_size = 64
         self.train_start = 100
         self.explore = 10000
@@ -95,7 +95,7 @@ class agent:
         model.add(Activation('relu'))
 
         # 15 categorical bins for Steering angles
-        model.add(Dense(25, activation="linear")) 
+        model.add(Dense(len(self.action_space), activation="linear")) 
 
         adam = Adam(lr=self.learning_rate)
         model.compile(loss='mse',optimizer=adam)
@@ -129,6 +129,7 @@ class agent:
             #return np.random.rand() - 0.5
         else:
             q_value = self.model.predict(s_t)
+            #print(q_value)
             #print(np.argmax(q_value))
             return np.argmax(q_value)
 
@@ -206,7 +207,8 @@ def run_ddqn():
     state_size = (img_rows, img_cols, img_channels)
 
     s = np.linspace(-0.1, 0.1, 5)
-    t = np.linspace(-1, 3, 5)
+    t = np.array([1.6])
+    #t = np.linspace(-1, 3, 5)
 
     mesh = np.meshgrid(s, t)
 
@@ -268,9 +270,9 @@ def run_ddqn():
 
             s_t1 = np.append(x_t1, s_t[:, :, :, :3], axis=3)
 
-            #episode_memory.insert(0, (s_t, idx, reward, s_t1, done))
+            episode_memory.insert(0, (s_t, idx, reward, s_t1, done))
             
-            a.replay_memory(s_t, idx, reward, s_t1, done)
+            #a.replay_memory(s_t, idx, reward, s_t1, done)
 
             if a.train:
                 a.train_replay()
@@ -292,15 +294,15 @@ def run_ddqn():
                 episodes.append(e)
 
                 if a.train:
-                    a.save_model("Malli4")
+                    a.save_model("Malli_just_negative_medium_long_penalty")
 
                 print("episode:", e, "  memory length:", len(a.memory),
                         "  epsilon:", a.epsilon, " episode length:", episode_len)
 
-        # for i, m in enumerate(episode_memory):
+        for i, m in enumerate(episode_memory):
             
-        #     discount = max(0, (1 - i / 4))
-        #     a.replay_memory(m[0], m[1], m[2] - discount, m[3], m[4])
+            discount = max(0, (2 - i / 4))
+            a.replay_memory(m[0], m[1], m[2] - discount, m[3], m[4])
 
         
 
