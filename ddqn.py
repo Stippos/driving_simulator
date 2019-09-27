@@ -218,6 +218,9 @@ def run_ddqn():
 
     a = agent(state_size, action_space, train = True)
 
+    a = agent(state_size, action_space, train = False)
+    a.load_model("Malli_just_negative_medium_long_penalty_2")
+
     episodes = []
 
     global image
@@ -294,14 +297,14 @@ def run_ddqn():
                 episodes.append(e)
 
                 if a.train:
-                    a.save_model("Malli_just_negative_medium_long_penalty")
+                    a.save_model("Malli_just_negative_medium_long_penalty_2")
 
                 print("episode:", e, "  memory length:", len(a.memory),
                         "  epsilon:", a.epsilon, " episode length:", episode_len)
 
         for i, m in enumerate(episode_memory):
             
-            discount = max(0, (2 - i / 4))
+            discount = max(0, (4 - i / 4))
             a.replay_memory(m[0], m[1], m[2] - discount, m[3], m[4])
 
         
