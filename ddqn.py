@@ -207,7 +207,7 @@ def run_ddqn():
     state_size = (img_rows, img_cols, img_channels)
 
     s = np.linspace(-0.1, 0.1, 5)
-    t = np.array([1.6])
+    t = np.linspace(-0.1, 0.15, 5)
     #t = np.linspace(-1, 3, 5)
 
     mesh = np.meshgrid(s, t)
@@ -218,8 +218,8 @@ def run_ddqn():
 
     a = agent(state_size, action_space, train = True)
 
-    a = agent(state_size, action_space, train = False)
-    a.load_model("Malli_just_negative_medium_long_penalty_2")
+    #a = agent(state_size, action_space, train = False)
+    #a.load_model("Malli_just_negative_medium_long_penalty_2")
 
     episodes = []
 
@@ -256,7 +256,8 @@ def run_ddqn():
             idx = a.get_action(s_t)
 
             steering, throttle = action_space[idx]
-
+            #print(steering)
+            #print(throttle)
             new_obs, reward, done = env.step(steering, throttle, x_t.T)
 
             #surf = pygame.surfarray.make_surface(new_obs)
@@ -297,7 +298,7 @@ def run_ddqn():
                 episodes.append(e)
 
                 if a.train:
-                    a.save_model("Malli_just_negative_medium_long_penalty_2")
+                    a.save_model("Malli_throttle")
 
                 print("episode:", e, "  memory length:", len(a.memory),
                         "  epsilon:", a.epsilon, " episode length:", episode_len)

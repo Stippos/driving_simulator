@@ -6,6 +6,8 @@ import pandas as pd
 from scipy.spatial import ConvexHull
 from scipy.ndimage import rotate
 
+from scipy.misc import toimage
+
 
 import matplotlib.pyplot as plt
 
@@ -27,7 +29,7 @@ class box:
         self.v = 0
         self.a = 0
 
-        self.dir = np.pi
+        self.dir = 0
 
         self.color = color
 
@@ -83,7 +85,7 @@ class box:
         self.x = self.init_x
         self.y = self.init_y
         self.v = 0
-        self.dir = np.pi
+        self.dir = 0
         self.a = 0
 
         vc = self.vision_limits
@@ -217,7 +219,7 @@ def distance(x3, y3, track):
 
 class game:
 
-    def __init__(self, draw = True):
+    def __init__(self, draw = True, manual_control = False):
 
         pygame.init()
 
@@ -241,6 +243,8 @@ class game:
         self.outer, self.inner = get_track(self.display_width, self.display_height)
 
         self.graphics = draw
+
+        self.manual_control = manual_control
 
     def get_vision(self):
 
@@ -267,7 +271,7 @@ class game:
 
         if top > l[0][1]:
             pad_top = int(abs(l[0][1]))
-        elif right < l[3][1]:
+        elif bottom < l[3][1]:
             pad_bottom = int(l[3][1] - bottom)
 
         # print(pad_left)
@@ -308,7 +312,7 @@ class game:
             else:
                 break
         
-        print(reward)
+        #print(reward)
 
         return obs, reward, done
 
@@ -330,6 +334,9 @@ class game:
 
     def frame(self, steering, acc, obs):
 
+        # if self.manual_control:
+        #     control(self.car, "manual")
+        # else:
         self.car.accelerate(acc)
         self.car.turn(steering)
         self.car.move()
@@ -360,7 +367,7 @@ class game:
         self.car.draw(self.surface)
 
         surf = pygame.surfarray.make_surface(obs)
-        self.surface.blit(surf, (1520,0))
+        self.surface.blit(surf, (1500,0))
 
         font = pygame.font.Font('freesansbold.ttf', 12) 
         text = font.render("Speed: {}, Acc: {}, Direction: {}, Reward: {}".format(round(self.car.v, 2), round(self.car.a, 2), round(self.car.dir, 2), round(self.reward(), 2)), True, (0,0,0))
@@ -388,5 +395,45 @@ def main():
         new_game.step(np.random.rand() / 5 - 0.1, np.random.rand() / 5 - 0.1)
 
 if __name__ == "__main__":
+    
     main()
-    plt.show()
+
+    # from PIL import Image
+
+    # g = game()
+
+    # acc = 0.2
+    # direction = 0.2
+
+    # running = True
+
+    # obs = np.random.rand(80, 80)
+
+    # counter = 0
+
+    # while running:
+
+    #     counter += 1
+
+    #     cur_acc = 0
+    #     cur_dir = 0
+    #     for event in pygame.event.get():
+    #         if event.type == pygame.QUIT:
+    #             running = False
+    #         elif event.type == pygame.KEYDOWN:
+    #             if event.key == pygame.K_UP:
+    #                 cur_acc += acc
+    #             if event.key == pygame.K_DOWN:
+    #                 cur_acc -= acc
+    #             if event.key == pygame.K_RIGHT:
+    #                 cur_dir += direction
+    #             if event.key == pygame.K_LEFT:
+    #                 cur_dir -= direction
+
+            
+    #     obs, _, _ = g.step(cur_dir, cur_acc, obs)
+
+    #     im  = Image.fromarray(obs).convert("L")
+    #     im.save('outfile_{}.png'.format(counter))
+        
+
