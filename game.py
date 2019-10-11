@@ -6,8 +6,7 @@ import pandas as pd
 from scipy.spatial import ConvexHull
 from scipy.ndimage import rotate
 
-from scipy.misc import toimage
-
+import cv2
 
 import matplotlib.pyplot as plt
 
@@ -217,6 +216,12 @@ def distance(x3, y3, track):
 
     return np.min(distances)
 
+def process_image(obs):
+
+        result = cv2.resize(obs, (80, 80))
+
+        return result
+
 class game:
 
     def __init__(self, draw = True, manual_control = False):
@@ -293,9 +298,11 @@ class game:
 
         height = im.shape[0]
 
-        return im[:height//2, :]
+        res = im[:height//2, :]
+        
+        return process_image(res)
         #return im
-
+    
     def reset(self):
         self.car.reset()
 
@@ -305,7 +312,7 @@ class game:
         
         start_reward = self.reward()
 
-        for i in range(2):
+        for i in range(1):
             obs, reward, done = self.frame(steering, acc, given_obs) 
             if not done:
                 continue
