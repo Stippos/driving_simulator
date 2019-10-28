@@ -331,9 +331,9 @@ class game:
         # if self.car.v < 0:
         #     reward = self.car.v
         # else:
-        #     reward = (1 - abs(outer - inner) / abs(outer + inner)) * self.car.v
+        reward = (1 - abs(outer - inner) / abs(outer + inner)) * self.car.v
         
-        reward = self.car.v
+        #reward = self.car.v
 
         #print("Distance from outer: {}, Distance from inner: {}, Reward: {}".format(outer, inner, reward))
         
