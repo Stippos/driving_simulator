@@ -381,7 +381,6 @@ class game:
 
     def get_reduced_vision(self):
 
-
         """"
         This implements the vision that is just the distances to the wall in 12 directions.
         """
@@ -492,7 +491,34 @@ class game:
         
         #print(reward)
 
-        return obs, reward, done, 0
+        return obs, reward, done, self.string_description(action)
+
+    def string_description(self, action):
+
+        outer = distance(self.car.x, self.car.y, self.outer)
+        inner = distance(self.car.x, self.car.y, self.inner)
+        
+        max_road_width = 200
+        width = 40
+
+
+        left_lane = int(outer / max_road_width * width)
+        right_lane = int(inner / max_road_width * width)
+
+        left_wall = int(width / 2 - left_lane)
+        right_wall = int(width / 2 - right_lane)
+
+        car = "| |"
+
+        if action[0] < -0.05:
+            car = "\\ \\"
+        elif action[0] > 0.05:
+            car = "/ /"
+
+        string = "#" * left_wall + "." * left_lane + car + "." * right_lane + "#" * right_wall
+
+        return string
+
 
     def reward(self):
 

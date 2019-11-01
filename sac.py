@@ -212,9 +212,10 @@ for episode in range(args.n_episodes):
             #print(action)
         else:
             action = actor.select_action(state)
-            print(action)
+            #print(action)
 
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, done, info = env.step(action)
+        print(info)
         episode_reward += reward
 
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
