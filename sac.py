@@ -53,6 +53,31 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Networks
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+class Conv(nn.Module):
+    def __init__(self, img_channels):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(img_channels, 24, 5, stride=2, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(24, 32, 5, stride=2, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 5, stride=2, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.ReLU(),
+            Flatten(),
+        )
+    def forward(self, x):
+        return self.net(x)
+
+        
+
 class MLP(nn.Module):
     def __init__(self, input_size, output_size, init_w=3e-3):
         super().__init__()

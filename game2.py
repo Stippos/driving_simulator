@@ -339,7 +339,7 @@ class action_space:
 
 class game:
 
-    def __init__(self, draw = True, manual_control = False):
+    def __init__(self, draw = True, manual_control = False, n_directions = 24):
 
         pygame.init()
 
@@ -368,7 +368,7 @@ class game:
 
         self.line_points = []
 
-        self.n_directions = 12
+        self.n_directions = n_directions
 
         self.observation_space = np.zeros(self.n_directions)
         self.action_space = action_space()
@@ -379,14 +379,14 @@ class game:
         for d in dirs:
             self.line_points.append((self.car.x + np.cos(d) * 10, self.car.y + np.sin(d) * 10))
 
-    def get_reduced_vision(self, n_directions=13):
+    def get_reduced_vision(self):
 
 
         """"
         This implements the vision that is just the distances to the wall in 12 directions.
         """
 
-        dirs = np.linspace(0, 2 * np.pi, n_directions)[:-1] - self.car.dir
+        dirs = np.linspace(0.0001, 2 * np.pi - 0.0001, self.n_directions + 1)[:-1] - self.car.dir
 
         x = self.car.x
         y = self.car.y
@@ -406,7 +406,11 @@ class game:
 
         self.line_points = line_points
 
-        return dists
+        dists = np.array(dists)
+
+        norm = np.sqrt(np.sum(dists * dists))
+
+        return dists / norm
 
 
     def get_vision(self):
@@ -474,7 +478,13 @@ class game:
 
             #Here I've bound throttle to one to see if even that works
             
-            obs, reward, done = self.frame(action[0] / 10, max(0, action[1]) * 3, given_obs) 
+            #obs, reward, done = self.frame(action[0] / 10, max(0, action[1]) * 3, given_obs) 
+
+            throttle = action[1]
+            throttle = 1 + max(0, action[1]) * 5
+
+            obs, reward, done = self.frame(action[0] / 10, throttle, given_obs) 
+            
             if not done:
                 continue
             else:
@@ -492,6 +502,9 @@ class game:
         # if self.car.v < 0:
         #     reward = self.car.v
         # else:
+
+        #reward = self.car.v * (1 - abs(outer - inner) / abs(outer + inner))
+
         reward = self.car.v
         
         #reward = self.car.v
