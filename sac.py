@@ -228,7 +228,7 @@ for episode in range(args.n_episodes):
         temp = state[np.newaxis, np.newaxis, :]
         print(temp.shape)
         
-        state_embedding = conv.forward(torch.FloatTensor(temp))
+        state_embedding = conv.forward(torch.FloatTensor(temp).to(device))
 
         if episode < args.n_random_episodes:
             action = env.action_space.sample()
