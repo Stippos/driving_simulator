@@ -361,6 +361,7 @@ class game:
         # car_y = 800 / 1000 * self.display_height
 
         self.vision_size = vision_size
+        self.vision = vision
 
         self.car = box(car_x, car_y, 40, 20, (0,0,0), vision_size * 2, vision_size)
         self.clock = pygame.time.Clock()
@@ -373,7 +374,11 @@ class game:
 
         self.n_directions = n_directions
 
-        self.observation_space = np.zeros(self.n_directions)
+        if vision == "simple":
+            self.observation_space = np.zeros(self.n_directions)
+        else:
+            self.observation_space = np.zeros((self.vision_size * self.vision_size))
+        
         self.action_space = action_space()
 
         self.throttle_min = throttle_min
@@ -422,6 +427,9 @@ class game:
 
 
     def get_vision(self):
+
+        if self.vision == "simple":
+            return self.get_reduced_vision()
 
         pa = np.array(pygame.PixelArray(self.surface))
 
@@ -476,7 +484,7 @@ class game:
     def reset(self):
         self.car.reset()
 
-        return self.get_reduced_vision()
+        return self.get_vision()
 
     def step(self, action, given_obs=np.zeros((80,80))):
         
@@ -536,6 +544,8 @@ class game:
         #     reward = self.car.v
         # else:
 
+
+
         if self.reward_type == "speed":
             reward = self.car.v
         elif self.reward_type == "cte":
@@ -569,7 +579,7 @@ class game:
             self.draw(obs)
         
         
-        obs = np.array(self.get_reduced_vision())
+        obs = np.array(self.get_vision())
         
         self.clock.tick(30)
 

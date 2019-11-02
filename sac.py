@@ -37,13 +37,14 @@ parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
 parser.add_argument('--throttle_min', default=1, type=float)
 parser.add_argument('--throttle_max', default=2, type=float)
 parser.add_argument('--reward', default='speed')
+parser.add_argument('--vision', default='normal')
 
 args = parser.parse_args()
 
 
 # Initial Setup
 
-env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_min, reward_type=args.reward)
+env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_min, reward_type=args.reward, vision=args.vision)
 obs_size, act_size = env.observation_space.shape[0], env.action_space.shape[0]
 
 # env.seed(args.seed)
@@ -57,15 +58,17 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Networks
 
+linear_output = 100
+
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
 
 class Conv(nn.Module):
-    def __init__(self, img_channels):
+    def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(img_channels, 24, 5, stride=2, padding=2),
+            nn.Conv2d(1, 24, 5, stride=2, padding=2),
             nn.ReLU(),
             nn.Conv2d(24, 32, 5, stride=2, padding=2),
             nn.ReLU(),
@@ -76,11 +79,12 @@ class Conv(nn.Module):
             nn.Conv2d(64, 64, 3, stride=1, padding=1),
             nn.ReLU(),
             Flatten(),
+            nn.Linear(6400, 500),
+            nn.ReLU(),
+            nn.Linear(500, output_dim)
         )
     def forward(self, x):
         return self.net(x)
-
-        
 
 class MLP(nn.Module):
     def __init__(self, input_size, output_size, init_w=3e-3):
@@ -97,6 +101,7 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+obs_size = linear_output
 
 class Critic(nn.Module):
     """ Twin Q-networks """
@@ -140,6 +145,8 @@ class Actor(nn.Module):
         action, _ = self.sample(state)
         return action[0].detach().cpu().numpy()
 
+conv = Conv(linear_output).to(device)
+conv_optimizer = torch.optim.Adam(conv.parameters(), lr=args.lr)
 
 critic = Critic().to(device)
 critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.lr)
@@ -160,6 +167,9 @@ def update_parameters(replay_buffer):
     batch = random.sample(replay_buffer, k=args.batch_size)
     state, action, reward, next_state, not_done = [torch.FloatTensor(t).to(device) for t in zip(*batch)]
 
+    state = conv.forward(torch.FloatTensor(state).to(device))
+    next_state = conv.forward(torch.FloatTensor(next_state).to(device))
+
     alpha = log_alpha.exp().item()
 
     # Update critic
@@ -177,7 +187,7 @@ def update_parameters(replay_buffer):
     critic_loss = q1_loss + q2_loss
 
     critic_optimizer.zero_grad()
-    critic_loss.backward()
+    critic_loss.backward(retain_graph=True)
     critic_optimizer.step()
 
     for target_param, param in zip(critic_target.parameters(), critic.parameters()):
@@ -194,6 +204,8 @@ def update_parameters(replay_buffer):
     actor_loss.backward()
     actor_optimizer.step()
 
+    conv_optimizer.step()
+
     # Update alpha
 
     alpha_loss = -(log_alpha * (action_new_log_prob + target_entropy).detach()).mean()
@@ -209,21 +221,29 @@ replay_buffer = deque(maxlen=args.replay_buffer_size)
 
 for episode in range(args.n_episodes):
     state = env.reset()
+    
     episode_reward = 0
     for episode_step in range(env._max_episode_steps):
+
+        temp = state[np.newaxis, np.newaxis, :]
+        print(temp.shape)
+        
+        state_embedding = conv.forward(torch.FloatTensor(temp))
+
         if episode < args.n_random_episodes:
             action = env.action_space.sample()
             #print(action)
         else:
-            action = actor.select_action(state)
+            action = actor.select_action(state_embedding)
             #print(action)
 
         next_state, reward, done, info = env.step(action)
-        print(info)
+
+        print(info + "  " + "Reward: " + str(round(reward, 2)))
         episode_reward += reward
 
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
-        replay_buffer.append([state, action, [reward], next_state, [not_done]])
+        replay_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
         state = next_state
 
         #print(state)
