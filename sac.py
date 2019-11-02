@@ -34,12 +34,16 @@ parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
                     help='total number of training episodes')
 parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
                     help='number of initial episodes for random exploration')
+parser.add_argument('--throttle_min', default=1, type=float)
+parser.add_argument('--throttle_max', default=2, type=float)
+parser.add_argument('--reward', default='speed')
+
 args = parser.parse_args()
 
 
 # Initial Setup
 
-env = game2.game()
+env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_min, reward_type=args.reward)
 obs_size, act_size = env.observation_space.shape[0], env.action_space.shape[0]
 
 # env.seed(args.seed)

@@ -339,7 +339,9 @@ class action_space:
 
 class game:
 
-    def __init__(self, draw = True, manual_control = False, n_directions = 24):
+    def __init__(self, draw=True, manual_control=False, n_directions=24, 
+                 reward_type="speed", throttle_min=1, throttle_max=2, 
+                 vision="simple", vision_size=300):
 
         pygame.init()
 
@@ -354,29 +356,31 @@ class game:
             self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
         car_x = 230 / 1600 * self.display_width
         car_y = 400 / 1000 * self.display_height
-        # 
 
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
 
-        self.car = box(car_x, car_y, 40, 20, (0,0,0), 600, 300)
+        self.vision_size = vision_size
 
+        self.car = box(car_x, car_y, 40, 20, (0,0,0), vision_size * 2, vision_size)
         self.clock = pygame.time.Clock()
-
         self.running = True
-
-        self.outer, self.inner = get_track(self.display_width, self.display_height)
-
         self.graphics = draw
-
         self.manual_control = manual_control
 
+        self.outer, self.inner = get_track(self.display_width, self.display_height)
         self.line_points = []
 
         self.n_directions = n_directions
 
         self.observation_space = np.zeros(self.n_directions)
         self.action_space = action_space()
+
+        self.throttle_min = throttle_min
+        self.throttle_max = throttle_max
+        
+        self.reward_type = reward_type
+
         self._max_episode_steps = 1000
 
         dirs = np.linspace(-np.pi/2, np.pi/2, 8) + self.car.dir
@@ -484,8 +488,7 @@ class game:
             
             #obs, reward, done = self.frame(action[0] / 10, max(0, action[1]) * 3, given_obs) 
 
-            throttle = action[1]
-            throttle = 1 + max(0, action[1]) * 5
+            throttle = self.throttle_min + max(0, action[1]) * (self.throttle_max - self.throttle_min)
 
             obs, reward, done = self.frame(action[0] / 10, throttle, given_obs) 
             
@@ -505,7 +508,6 @@ class game:
         
         max_road_width = 200
         width = 40
-
 
         left_lane = int(outer / max_road_width * width)
         right_lane = int(inner / max_road_width * width)
@@ -534,10 +536,11 @@ class game:
         #     reward = self.car.v
         # else:
 
-        #reward = self.car.v * (1 - abs(outer - inner) / abs(outer + inner))
+        if self.reward_type == "speed":
+            reward = self.car.v
+        elif self.reward_type == "cte":
+            reward = self.car.v * (1 - abs(outer - inner) / abs(outer + inner))
 
-        reward = self.car.v
-        
         #reward = self.car.v
 
         #print("Distance from outer: {}, Distance from inner: {}, Reward: {}".format(outer, inner, reward))
@@ -584,10 +587,10 @@ class game:
             l1 = ((self.car.x, self.car.y), l)
             
             i = min_intersection(l1, self.outer, self.inner)
-            pygame.draw.line(self.surface, (0,0,0), (self.car.x, self.car.y), i, 3)
+            pygame.draw.line(self.surface, (255,0,0), (self.car.x, self.car.y), i, 1)
             
             #print(i)
-            pygame.draw.rect(self.surface, (0,0,0), pygame.Rect(i[0], i[1], 10, 10))
+            pygame.draw.rect(self.surface, (255,0,0), pygame.Rect(i[0] - 2, i[1] - 2, 4, 4))
 
         surf = pygame.surfarray.make_surface(obs)
         self.surface.blit(surf, (1500,0))
@@ -597,8 +600,6 @@ class game:
         self.surface.blit(text, (10, 10))
 
         pygame.display.update()
-
-
 
 
 
