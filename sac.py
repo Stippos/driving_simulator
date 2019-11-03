@@ -121,7 +121,7 @@ class Actor(nn.Module):
 
     def forward(self, state):
         x = self.net(state)
-        print(x.shape)
+        #print(x.shape)
         mean, log_std = x[:, :act_size], x[:, act_size:]
         log_std = torch.clamp(log_std, min=-20, max=2)
         return mean, log_std
@@ -136,7 +136,7 @@ class Actor(nn.Module):
         x = normal.rsample()
 
         # Enforcing action bounds
-        print(x.shape)
+        #print(x.shape)
         action = torch.tanh(x)
         #print(action)
         log_prob = normal.log_prob(x) - torch.log(1 - action**2 + 1e-6)
