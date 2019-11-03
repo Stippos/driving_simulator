@@ -322,7 +322,7 @@ def distance(x3, y3, track):
 
 def process_image(obs):
 
-        result = cv2.resize(obs, (80, 80))
+        result = cv2.resize(obs, (40, 40))
 
         return result
 
@@ -341,19 +341,22 @@ class game:
 
     def __init__(self, draw=True, manual_control=False, n_directions=24, 
                  reward_type="speed", throttle_min=1, throttle_max=2, 
-                 vision="simple", vision_size=300):
+                 vision="simple", vision_size=150):
 
         pygame.init()
 
-        self.display_width = 1600
-        self.display_height = 1000
+        self.display_width = 800
+        self.display_height = 500
         
-        try:
-            self.surface = pygame.display.set_mode((self.display_width, self.display_height))
-        except pygame.error:
-            import os
-            os.environ["SDL_VIDEODRIVER"] = "dummy"
-            self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
+        #try:
+        #    self.surface = pygame.display.set_mode((self.display_width, self.display_height))
+        #except pygame.error:
+        #    import os
+        #    os.environ["SDL_VIDEODRIVER"] = "dummy"
+        #    self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
+
+        self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
+
         car_x = 230 / 1600 * self.display_width
         car_y = 400 / 1000 * self.display_height
 
@@ -363,7 +366,7 @@ class game:
         self.vision_size = vision_size
         self.vision = vision
 
-        self.car = box(car_x, car_y, 40, 20, (0,0,0), vision_size * 2, vision_size)
+        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size)
         self.clock = pygame.time.Clock()
         self.running = True
         self.graphics = draw
@@ -514,7 +517,7 @@ class game:
         outer = distance(self.car.x, self.car.y, self.outer)
         inner = distance(self.car.x, self.car.y, self.inner)
         
-        max_road_width = 200
+        max_road_width = self.display_width / 1600 * 200
         width = 40
 
         left_lane = int(outer / max_road_width * width)

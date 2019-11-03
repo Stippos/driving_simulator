@@ -68,20 +68,18 @@ class Conv(nn.Module):
     def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(1, 24, 5, stride=2, padding=2),
+            nn.Conv2d(1, 16, 5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv2d(24, 32, 5, stride=2, padding=2),
+            nn.Conv2d(16, 16, 5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv2d(32, 64, 5, stride=2, padding=2),
+            nn.Conv2d(16, 16, 5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.Conv2d(16, 16, 3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.Conv2d(16, 16, 3, stride=1, padding=1),
             nn.ReLU(),
             Flatten(),
-            nn.Linear(6400, 500),
-            nn.ReLU(),
-            nn.Linear(500, output_dim)
+            nn.Linear(400, 100)
         )
     def forward(self, x):
         return self.net(x)
@@ -123,26 +121,36 @@ class Actor(nn.Module):
 
     def forward(self, state):
         x = self.net(state)
+        print(x.shape)
         mean, log_std = x[:, :act_size], x[:, act_size:]
         log_std = torch.clamp(log_std, min=-20, max=2)
         return mean, log_std
 
     def sample(self, state):
         mean, log_std = self.forward(state)
+        #print(mean)
+        #print(log_std)
+        #print(mean.shape)
+        #print(log_std.shape)
         normal = Normal(mean, log_std.exp())
         x = normal.rsample()
 
         # Enforcing action bounds
+        print(x.shape)
         action = torch.tanh(x)
         #print(action)
         log_prob = normal.log_prob(x) - torch.log(1 - action**2 + 1e-6)
         log_prob = log_prob.sum(1, keepdim=True)
-
+        #print(action.shape)
         return action, log_prob
 
     def select_action(self, state):
-        state = torch.FloatTensor(state).to(device).unsqueeze(0)
+        #print("Actor state")
+        #print(state.shape)
+        state = torch.FloatTensor(state).to(device)
         action, _ = self.sample(state)
+        #print("Actor action")
+        #print(action.shape)
         return action[0].detach().cpu().numpy()
 
 conv = Conv(linear_output).to(device)
@@ -167,9 +175,11 @@ def update_parameters(replay_buffer):
     batch = random.sample(replay_buffer, k=args.batch_size)
     state, action, reward, next_state, not_done = [torch.FloatTensor(t).to(device) for t in zip(*batch)]
 
-    state = conv.forward(torch.FloatTensor(state).to(device))
-    next_state = conv.forward(torch.FloatTensor(next_state).to(device))
+    #print("Ennen konvoluutiota")
+    state = conv.forward(state)
+    next_state = conv.forward(next_state)
 
+    #print("Konvoluution jälkeen")
     alpha = log_alpha.exp().item()
 
     # Update critic
@@ -221,14 +231,16 @@ replay_buffer = deque(maxlen=args.replay_buffer_size)
 
 for episode in range(args.n_episodes):
     state = env.reset()
-    
+    #print(state)
     episode_reward = 0
     for episode_step in range(env._max_episode_steps):
 
         temp = state[np.newaxis, np.newaxis, :]
-        print(temp.shape)
+        #print(temp.shape)
         
         state_embedding = conv.forward(torch.FloatTensor(temp).to(device)).detach().cpu().numpy()
+        #print(state)
+        #print(state_embedding)
 
         if episode < args.n_random_episodes:
             action = env.action_space.sample()
@@ -237,7 +249,10 @@ for episode in range(args.n_episodes):
             action = actor.select_action(state_embedding)
             #print(action)
 
-        next_state, reward, done, info = env.step(action)
+        #print("Ennen steppiä")
+        #print(action)
+        next_state, reward, done, info = env.step(action, given_obs=state)
+
 
         print(info + "  " + "Reward: " + str(round(reward, 2)))
         episode_reward += reward
