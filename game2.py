@@ -348,14 +348,14 @@ class game:
         self.display_width = 800
         self.display_height = 500
         
-        #try:
-        #    self.surface = pygame.display.set_mode((self.display_width, self.display_height))
-        #except pygame.error:
-        #    import os
-        #    os.environ["SDL_VIDEODRIVER"] = "dummy"
-        #    self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
+        try:
+            self.surface = pygame.display.set_mode((self.display_width, self.display_height))
+        except pygame.error:
+            import os
+            os.environ["SDL_VIDEODRIVER"] = "dummy"
+            self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
-        self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
+        #self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
         car_x = 230 / 1600 * self.display_width
         car_y = 400 / 1000 * self.display_height
