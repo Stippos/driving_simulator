@@ -322,7 +322,7 @@ def distance(x3, y3, track):
 
 def process_image(obs):
 
-        result = cv2.resize(obs, (40, 40))
+        result = cv2.resize(obs, (80, 80))
 
         return result
 
@@ -345,8 +345,8 @@ class game:
 
         pygame.init()
 
-        self.display_width = 800
-        self.display_height = 500
+        self.display_width = 1600
+        self.display_height = 1000
         
         try:
             self.surface = pygame.display.set_mode((self.display_width, self.display_height))
@@ -366,7 +366,7 @@ class game:
         self.vision_size = vision_size
         self.vision = vision
 
-        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size)
+        self.car = box(car_x, car_y, 40, 20, (0,0,0), vision_size * 2, vision_size)
         self.clock = pygame.time.Clock()
         self.running = True
         self.graphics = draw
@@ -593,17 +593,20 @@ class game:
         self.surface.fill((13, 156, 0))
         draw_track(self.surface, self.inner, self.outer)
         self.car.draw(self.surface)
+        
 
-        self.get_reduced_vision()
+        if self.vision == "simple":
 
-        for l in self.line_points:
-            l1 = ((self.car.x, self.car.y), l)
-            
-            i = min_intersection(l1, self.outer, self.inner)
-            pygame.draw.line(self.surface, (255,0,0), (self.car.x, self.car.y), i, 1)
-            
-            #print(i)
-            pygame.draw.rect(self.surface, (255,0,0), pygame.Rect(i[0] - 2, i[1] - 2, 4, 4))
+            self.get_reduced_vision()
+
+            for l in self.line_points:
+                l1 = ((self.car.x, self.car.y), l)
+                
+                i = min_intersection(l1, self.outer, self.inner)
+                pygame.draw.line(self.surface, (255,0,0), (self.car.x, self.car.y), i, 1)
+                
+                #print(i)
+                pygame.draw.rect(self.surface, (255,0,0), pygame.Rect(i[0] - 2, i[1] - 2, 4, 4))
 
         surf = pygame.surfarray.make_surface(obs)
         self.surface.blit(surf, (1500,0))

@@ -68,18 +68,18 @@ class Conv(nn.Module):
     def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(1, 16, 5, stride=2, padding=2),
+             nn.Conv2d(1, 24, 5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 5, stride=2, padding=2),
+            nn.Conv2d(24, 32, 5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 5, stride=2, padding=2),
+            nn.Conv2d(32, 64, 5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, stride=1, padding=1),
+            nn.Conv2d(64, 64, 3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, stride=1, padding=1),
+            nn.Conv2d(64, 64, 3, stride=1, padding=1),
             nn.ReLU(),
             Flatten(),
-            nn.Linear(400, 100)
+            nn.Linear(6400, 100)
         )
     def forward(self, x):
         return self.net(x)
