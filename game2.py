@@ -536,7 +536,16 @@ class game:
         elif action[0] > 0.05:
             car = "/ /"
 
-        string = "#" * left_wall + "." * left_lane + car + "." * right_lane + "#" * right_wall
+        center_x = self.display_width / 2 
+        center_y = self.display_height / 2
+
+        rel_x = self.car.x - center_x
+        rel_y = center_y - self.car.y
+
+        progress = np.tan(rel_y / rel_x) / 2 / np.pi
+
+        string = "#" * left_wall + "." * left_lane + car + "." * right_lane + "#" * right_wall + " Pos: {:.2f}".format(progress, 2)
+        
 
         return string
 

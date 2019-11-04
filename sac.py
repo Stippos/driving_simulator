@@ -58,7 +58,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Networks
 
-linear_output = 16
+linear_output = 16 
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -82,22 +82,22 @@ class Conv(nn.Module):
         return self.net(x)
 
 
-# class Conv(nn.Module):
-#     def __init__(self, output_dim):
-#         super().__init__()
-#         self.net = nn.Sequential(
-#             nn.Conv2d(1, 6, 5),
-#             nn.MaxPool2d(2),
-#             nn.ReLU(),
-#             nn.Conv2d(6, 16, 5),
-#             nn.MaxPool2d(2),
-#             nn.ReLU(),
-#             Flatten(),
-#             nn.Linear(784, output_dim)
-#         )
-
-#     def forward(self, x):
-#         return self.net(x)
+#class Conv(nn.Module):
+#    def __init__(self, output_dim):
+#        super().__init__()
+#        self.net = nn.Sequential(
+#            nn.Conv2d(1, 6, 5),
+#            nn.MaxPool2d(2),
+#            nn.ReLU(),
+#            nn.Conv2d(6, 16, 5),
+#            nn.MaxPool2d(2),
+#            nn.ReLU(),
+#            Flatten(),
+#            nn.Linear(784, output_dim)
+#        )
+#
+#    def forward(self, x):
+#        return self.net(x)
 
 # class Conv(nn.Module):
 #     def __init__(self, output_dim):
@@ -189,7 +189,7 @@ class Actor(nn.Module):
         return action[0].detach().cpu().numpy()
 
 conv = Conv(linear_output).to(device)
-conv_optimizer = torch.optim.Adam(conv.parameters(), lr=args.lr)
+conv_optimizer = torch.optim.Adam(conv.parameters(), lr=0.00001)
 
 critic = Critic().to(device)
 critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.lr)
