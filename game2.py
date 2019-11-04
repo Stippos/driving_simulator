@@ -322,7 +322,7 @@ def distance(x3, y3, track):
 
 def process_image(obs):
 
-        result = cv2.resize(obs, (80, 80))
+        result = cv2.resize(obs, (40, 40))
 
         return result
 
@@ -341,7 +341,7 @@ class game:
 
     def __init__(self, draw=True, manual_control=False, n_directions=24, 
                  reward_type="speed", throttle_min=1, throttle_max=2, 
-                 vision="simple", vision_size=150):
+                 vision="simple", vision_size=300):
 
         pygame.init()
 
@@ -358,7 +358,7 @@ class game:
         #self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
         car_x = 230 / 1600 * self.display_width
-        car_y = 400 / 1000 * self.display_height
+        car_y = 800 / 1000 * self.display_height
 
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
@@ -366,7 +366,7 @@ class game:
         self.vision_size = vision_size
         self.vision = vision
 
-        self.car = box(car_x, car_y, 40, 20, (0,0,0), vision_size * 2, vision_size)
+        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size)
         self.clock = pygame.time.Clock()
         self.running = True
         self.graphics = draw
@@ -428,6 +428,9 @@ class game:
 
         return dists / norm
 
+    def get_state(self):
+        return self.get_vision()
+
 
     def get_vision(self):
 
@@ -487,7 +490,7 @@ class game:
     def reset(self):
         self.car.reset()
 
-        return self.get_vision()
+        return self.get_state()
 
     def step(self, action, given_obs=np.zeros((80,80))):
         
@@ -582,7 +585,7 @@ class game:
             self.draw(obs)
         
         
-        obs = np.array(self.get_vision())
+        obs = self.get_state()
         
         self.clock.tick(30)
 
@@ -609,7 +612,7 @@ class game:
                 pygame.draw.rect(self.surface, (255,0,0), pygame.Rect(i[0] - 2, i[1] - 2, 4, 4))
 
         surf = pygame.surfarray.make_surface(obs)
-        self.surface.blit(surf, (1500,0))
+        self.surface.blit(surf, (self.display_width - 100,0))
 
         font = pygame.font.Font('freesansbold.ttf', 12) 
         text = font.render("Speed: {}, Acc: {}, Direction: {}, Reward: {}".format(round(self.car.v, 2), round(self.car.a, 2), round(self.car.dir, 2), round(self.reward(), 2)), True, (0,0,0))

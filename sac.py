@@ -44,7 +44,7 @@ args = parser.parse_args()
 
 # Initial Setup
 
-env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_min, reward_type=args.reward, vision=args.vision)
+env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_max, reward_type=args.reward, vision=args.vision)
 obs_size, act_size = env.observation_space.shape[0], env.action_space.shape[0]
 
 # env.seed(args.seed)
@@ -58,7 +58,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Networks
 
-linear_output = 100
+linear_output = 16
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -68,21 +68,56 @@ class Conv(nn.Module):
     def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-             nn.Conv2d(1, 24, 5, stride=2, padding=2),
+            nn.Conv2d(1, 16, 3, 2),
             nn.ReLU(),
-            nn.Conv2d(24, 32, 5, stride=2, padding=2),
+            nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
-            nn.Conv2d(32, 64, 5, stride=2, padding=2),
+            nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
-            nn.ReLU(),
-            Flatten(),
-            nn.Linear(6400, 100)
+            nn.Conv2d(16, 16, 3, 2),
+            Flatten()
         )
+
     def forward(self, x):
         return self.net(x)
+
+
+# class Conv(nn.Module):
+#     def __init__(self, output_dim):
+#         super().__init__()
+#         self.net = nn.Sequential(
+#             nn.Conv2d(1, 6, 5),
+#             nn.MaxPool2d(2),
+#             nn.ReLU(),
+#             nn.Conv2d(6, 16, 5),
+#             nn.MaxPool2d(2),
+#             nn.ReLU(),
+#             Flatten(),
+#             nn.Linear(784, output_dim)
+#         )
+
+#     def forward(self, x):
+#         return self.net(x)
+
+# class Conv(nn.Module):
+#     def __init__(self, output_dim):
+#         super().__init__()
+#         self.net = nn.Sequential(
+#              nn.Conv2d(1, 24, 5, stride=2, padding=2),
+#             nn.ReLU(),
+#             nn.Conv2d(24, 32, 5, stride=2, padding=2),
+#             nn.ReLU(),
+#             nn.Conv2d(32, 64, 5, stride=2, padding=2),
+#             nn.ReLU(),
+#             nn.Conv2d(64, 64, 3, stride=1, padding=1),
+#             nn.ReLU(),
+#             nn.Conv2d(64, 64, 3, stride=1, padding=1),
+#             nn.ReLU(),
+#             Flatten(),
+#             nn.Linear(1600, output_dim)
+#         )
+#     def forward(self, x):
+#         return self.net(x)
 
 class MLP(nn.Module):
     def __init__(self, input_size, output_size, init_w=3e-3):
@@ -197,8 +232,9 @@ def update_parameters(replay_buffer):
     critic_loss = q1_loss + q2_loss
 
     critic_optimizer.zero_grad()
-    critic_loss.backward(retain_graph=True)
+    critic_loss.backward(retain_graph = True)
     critic_optimizer.step()
+
 
     for target_param, param in zip(critic_target.parameters(), critic.parameters()):
         target_param.data.copy_((1.0-args.tau)*target_param.data + args.tau*param.data)
