@@ -512,20 +512,31 @@ class game:
                 break
         
         #print(reward)
+        self.string_image()
 
         return obs, reward, done, self.string_description(action)
+
+    def string_image(self):
+
+        pixels =  np.array(pygame.PixelArray(self.surface))
+
+        pixels = pixels[::5, ::5]
+
+        for i in range(pixels.shape[1]):
+            print("".join(list(map(lambda x: chr(100 + x%50), pixels[:, i]))))
+
 
     def string_description(self, action):
 
         outer = distance(self.car.x, self.car.y, self.outer)
         inner = distance(self.car.x, self.car.y, self.inner)
         
-        max_road_width = self.display_width / 1600 * 200
+        max_road_width = self.display_width / 1600 * 250
         width = 40
 
         left_lane = int(outer / max_road_width * width)
         right_lane = int(inner / max_road_width * width)
-
+    
         left_wall = int(width / 2 - left_lane)
         right_wall = int(width / 2 - right_lane)
 
