@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
-
 import game2
 
 
@@ -35,7 +34,6 @@ parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
                     help='total number of training episodes')
 parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
                     help='number of initial episodes for random exploration')
-
 parser.add_argument('--throttle_min', default=1, type=float)
 parser.add_argument('--throttle_max', default=2, type=float)
 parser.add_argument('--reward', default='speed')
@@ -43,11 +41,14 @@ parser.add_argument('--vision', default='normal')
 
 args = parser.parse_args()
 
-env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_max, reward_type=args.reward, vision="simple")
+
+# Initial Setup
+
+env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_max, reward_type=args.reward, vision=args.vision)
 obs_size, act_size = env.observation_space.shape[0], env.action_space.shape[0]
 
-#env.seed(args.seed)
-#env.action_space.seed(args.seed)
+# env.seed(args.seed)
+# env.action_space.seed(args.seed)
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -56,6 +57,67 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # Networks
+
+linear_output = 16 
+
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+class Conv(nn.Module):
+    def __init__(self, output_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(1, 16, 3, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, 2),
+            Flatten()
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+#class Conv(nn.Module):
+#    def __init__(self, output_dim):
+#        super().__init__()
+#        self.net = nn.Sequential(
+#            nn.Conv2d(1, 6, 5),
+#            nn.MaxPool2d(2),
+#            nn.ReLU(),
+#            nn.Conv2d(6, 16, 5),
+#            nn.MaxPool2d(2),
+#            nn.ReLU(),
+#            Flatten(),
+#            nn.Linear(784, output_dim)
+#        )
+#
+#    def forward(self, x):
+#        return self.net(x)
+
+# class Conv(nn.Module):
+#     def __init__(self, output_dim):
+#         super().__init__()
+#         self.net = nn.Sequential(
+#              nn.Conv2d(1, 24, 5, stride=2, padding=2),
+#             nn.ReLU(),
+#             nn.Conv2d(24, 32, 5, stride=2, padding=2),
+#             nn.ReLU(),
+#             nn.Conv2d(32, 64, 5, stride=2, padding=2),
+#             nn.ReLU(),
+#             nn.Conv2d(64, 64, 3, stride=1, padding=1),
+#             nn.ReLU(),
+#             nn.Conv2d(64, 64, 3, stride=1, padding=1),
+#             nn.ReLU(),
+#             Flatten(),
+#             nn.Linear(1600, output_dim)
+#         )
+#     def forward(self, x):
+#         return self.net(x)
 
 class MLP(nn.Module):
     def __init__(self, input_size, output_size, init_w=3e-3):
@@ -72,6 +134,7 @@ class MLP(nn.Module):
     def forward(self, x):
         return self.net(x)
 
+obs_size = linear_output
 
 class Critic(nn.Module):
     """ Twin Q-networks """
@@ -93,27 +156,40 @@ class Actor(nn.Module):
 
     def forward(self, state):
         x = self.net(state)
+        #print(x.shape)
         mean, log_std = x[:, :act_size], x[:, act_size:]
         log_std = torch.clamp(log_std, min=-20, max=2)
         return mean, log_std
 
     def sample(self, state):
         mean, log_std = self.forward(state)
+        #print(mean)
+        #print(log_std)
+        #print(mean.shape)
+        #print(log_std.shape)
         normal = Normal(mean, log_std.exp())
         x = normal.rsample()
 
         # Enforcing action bounds
+        #print(x.shape)
         action = torch.tanh(x)
+        #print(action)
         log_prob = normal.log_prob(x) - torch.log(1 - action**2 + 1e-6)
         log_prob = log_prob.sum(1, keepdim=True)
-
+        #print(action.shape)
         return action, log_prob
 
     def select_action(self, state):
-        state = torch.FloatTensor(state).to(device).unsqueeze(0)
+        #print("Actor state")
+        #print(state.shape)
+        state = torch.FloatTensor(state).to(device)
         action, _ = self.sample(state)
+        #print("Actor action")
+        #print(action.shape)
         return action[0].detach().cpu().numpy()
 
+conv = Conv(linear_output).to(device)
+conv_optimizer = torch.optim.Adam(conv.parameters(), lr=0.00001)
 
 critic = Critic().to(device)
 critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.lr)
@@ -134,6 +210,11 @@ def update_parameters(replay_buffer):
     batch = random.sample(replay_buffer, k=args.batch_size)
     state, action, reward, next_state, not_done = [torch.FloatTensor(t).to(device) for t in zip(*batch)]
 
+    #print("Ennen konvoluutiota")
+    state = conv.forward(state)
+    next_state = conv.forward(next_state)
+
+    #print("Konvoluution jälkeen")
     alpha = log_alpha.exp().item()
 
     # Update critic
@@ -151,8 +232,9 @@ def update_parameters(replay_buffer):
     critic_loss = q1_loss + q2_loss
 
     critic_optimizer.zero_grad()
-    critic_loss.backward()
+    critic_loss.backward(retain_graph = True)
     critic_optimizer.step()
+
 
     for target_param, param in zip(critic_target.parameters(), critic.parameters()):
         target_param.data.copy_((1.0-args.tau)*target_param.data + args.tau*param.data)
@@ -167,6 +249,8 @@ def update_parameters(replay_buffer):
     actor_optimizer.zero_grad()
     actor_loss.backward()
     actor_optimizer.step()
+
+    conv_optimizer.step()
 
     # Update alpha
 
@@ -183,24 +267,54 @@ replay_buffer = deque(maxlen=args.replay_buffer_size)
 
 for episode in range(args.n_episodes):
     state = env.reset()
+    #print(state)
     episode_reward = 0
+    episode_buffer = []
     for episode_step in range(env._max_episode_steps):
+
+        temp = state[np.newaxis, np.newaxis, :]
+        #print(temp.shape)
+        
+        state_embedding = conv.forward(torch.FloatTensor(temp).to(device)).detach().cpu().numpy()
+        #print(state)
+        #print(state_embedding)
+
         if episode < args.n_random_episodes:
             action = env.action_space.sample()
+            #print(action)
         else:
-            action = actor.select_action(state)
+            action = actor.select_action(state_embedding)
+            #print(action)
 
-        next_state, reward, done, _ = env.step(action)
+        #print("Ennen steppiä")
+        #print(action)
+        next_state, reward, done, info = env.step(action, given_obs=state)
+
+
+        print(info + "  " + "Reward: {:.2f} {:.2f}".format(reward, episode_reward))
         episode_reward += reward
 
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
-        replay_buffer.append([state, action, [reward], next_state, [not_done]])
+        replay_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
         state = next_state
+
+        #print(state)
 
         if len(replay_buffer) > args.batch_size:
             update_parameters(replay_buffer)
 
         if done:
             break
+#    for i in range(len(episode_buffer)):
+#        reward = 0
+#        
+#        for j in range(min(len(episode_buffer) - i, 1)):
+#            reward += episode_buffer[i + j][2][0]
+#        
+#        e = episode_buffer[i]
+#        e[2] = [reward / 20]
+#
+#        replay_buffer.append(e)
+
 
     print("Episode {}. Reward {}".format(episode, episode_reward))

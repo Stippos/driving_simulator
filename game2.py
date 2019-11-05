@@ -345,8 +345,8 @@ class game:
 
         pygame.init()
 
-        self.display_width = 1600
-        self.display_height = 1000
+        self.display_width = 800
+        self.display_height = 500
         
         try:
             self.surface = pygame.display.set_mode((self.display_width, self.display_height))
