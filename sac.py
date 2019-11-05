@@ -291,11 +291,11 @@ for episode in range(args.n_episodes):
         next_state, reward, done, info = env.step(action, given_obs=state)
 
 
-        print(info + "  " + "Reward: " + str(round(episode_reward, 2)))
+        print(info + "  " + "Reward: {:.2f} {:.2f}".format(reward, episode_reward))
         episode_reward += reward
 
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
-        episode_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
+        replay_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
         state = next_state
 
         #print(state)
@@ -305,16 +305,16 @@ for episode in range(args.n_episodes):
 
         if done:
             break
-    for i in range(len(episode_buffer)):
-        reward = 0
-        
-        for j in range(min(len(episode_buffer) - i, 10)):
-            reward += episode_buffer[i + j][2][0] / (j + i)
-        
-        e = episode_buffer[i]
-        e[2] = [reward]
-
-        replay_buffer.append(e)
+#    for i in range(len(episode_buffer)):
+#        reward = 0
+#        
+#        for j in range(min(len(episode_buffer) - i, 1)):
+#            reward += episode_buffer[i + j][2][0]
+#        
+#        e = episode_buffer[i]
+#        e[2] = [reward / 20]
+#
+#        replay_buffer.append(e)
 
 
     print("Episode {}. Reward {}".format(episode, episode_reward))

@@ -358,7 +358,7 @@ class game:
         #self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
         car_x = 230 / 1600 * self.display_width
-        car_y = 800 / 1000 * self.display_height
+        car_y = 600 / 1000 * self.display_height
 
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
@@ -512,7 +512,7 @@ class game:
                 break
         
         #print(reward)
-        self.string_image()
+        #self.string_image()
 
         return obs, reward, done, self.string_description(action)
 
@@ -555,7 +555,7 @@ class game:
 
         progress = np.tan(rel_y / rel_x) / 2 / np.pi
 
-        string = "#" * left_wall + "." * left_lane + car + "." * right_lane + "#" * right_wall + " Pos: {:.2f}".format(progress, 2)
+        string = "#" * left_wall + "." * left_lane + car + "." * right_lane + "#" * right_wall
         
 
         return string
