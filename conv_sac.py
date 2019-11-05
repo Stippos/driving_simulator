@@ -58,7 +58,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Networks
 
-linear_output = 16 
+linear_output = 64 
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -74,7 +74,7 @@ class Conv(nn.Module):
             nn.ReLU(),
             nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, 2),
+            nn.Conv2d(16, 16, 3, 1),
             Flatten()
         )
 
@@ -291,7 +291,7 @@ for episode in range(args.n_episodes):
         next_state, reward, done, info = env.step(action, given_obs=state)
 
 
-        print(info + "  " + "Reward: {:.2f} {:.2f}".format(reward, episode_reward))
+        print(info + "  " + "{} {:.2f}".format(episode, episode_reward))
         episode_reward += reward
 
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)

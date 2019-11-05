@@ -190,9 +190,10 @@ for episode in range(args.n_episodes):
         else:
             action = actor.select_action(state)
 
-        next_state, reward, done, _ = env.step(action)
+        next_state, reward, done, i = env.step(action)
         episode_reward += reward
-
+	
+        print("{} {} {:.2f}".format(i, episode, episode_reward))
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
         replay_buffer.append([state, action, [reward], next_state, [not_done]])
         state = next_state

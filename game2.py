@@ -345,8 +345,8 @@ class game:
 
         pygame.init()
 
-        self.display_width = 800
-        self.display_height = 500
+        self.display_width = 1600
+        self.display_height = 1000
         
         try:
             self.surface = pygame.display.set_mode((self.display_width, self.display_height))
@@ -358,7 +358,7 @@ class game:
         #self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
         car_x = 230 / 1600 * self.display_width
-        car_y = 600 / 1000 * self.display_height
+        car_y = 700 / 1000 * self.display_height
 
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
