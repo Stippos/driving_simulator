@@ -34,7 +34,7 @@ parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
                     help='total number of training episodes')
 parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
                     help='number of initial episodes for random exploration')
-parser.add_argument('--conv_lr', default=0.00005)
+parser.add_argument('--conv_lr', default=0.00005, type=float)
 parser.add_argument('--throttle_min', default=1, type=float)
 parser.add_argument('--throttle_max', default=2, type=float)
 parser.add_argument('--reward', default='speed')
