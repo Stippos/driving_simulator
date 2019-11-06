@@ -60,43 +60,43 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Networks
 
 linear_output = 256
-
+linear_output = 64
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
-
-class Conv(nn.Module):
-    def __init__(self, output_dim):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Conv2d(1, 4, 3, 1),
-            nn.ReLU(),
-            nn.Conv2d(4, 4, 3, 1),
-            nn.ReLU(),
-            nn.MaxPool2d(3),
-            Flatten(),
-            nn.Linear(576, output_dim)
-        )
-
-    def forward(self, x):
-        return self.net(x)
 
 # class Conv(nn.Module):
 #     def __init__(self, output_dim):
 #         super().__init__()
 #         self.net = nn.Sequential(
-#             nn.Conv2d(1, 16, 3, 2),
+#             nn.Conv2d(1, 4, 3, 1),
 #             nn.ReLU(),
-#             nn.Conv2d(16, 16, 3, 2),
+#             nn.Conv2d(4, 4, 3, 1),
 #             nn.ReLU(),
-#             nn.Conv2d(16, 16, 3, 2),
-#             nn.ReLU(),
-#             nn.Conv2d(16, 16, 3, 1),
-#             Flatten()
+#             nn.MaxPool2d(3),
+#             Flatten(),
+#             nn.Linear(576, output_dim)
 #         )
 
 #     def forward(self, x):
 #         return self.net(x)
+
+class Conv(nn.Module):
+    def __init__(self, output_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(1, 16, 3, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, 2),
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3, 1),
+            Flatten()
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 
 #class Conv(nn.Module):
