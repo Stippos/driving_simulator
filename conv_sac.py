@@ -34,6 +34,7 @@ parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
                     help='total number of training episodes')
 parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
                     help='number of initial episodes for random exploration')
+parser.add_argument('--conv_lr', default=0.00005)
 parser.add_argument('--throttle_min', default=1, type=float)
 parser.add_argument('--throttle_max', default=2, type=float)
 parser.add_argument('--reward', default='speed')
@@ -58,7 +59,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Networks
 
-linear_output = 64 
+linear_output = 256
 
 class Flatten(nn.Module):
     def forward(self, input):
@@ -68,18 +69,34 @@ class Conv(nn.Module):
     def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(1, 16, 3, 2),
+            nn.Conv2d(1, 4, 3, 1),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, 2),
+            nn.Conv2d(4, 4, 3, 1),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, 2),
-            nn.ReLU(),
-            nn.Conv2d(16, 16, 3, 1),
-            Flatten()
+            nn.MaxPool2d(3),
+            Flatten(),
+            nn.Linear(576, output_dim)
         )
 
     def forward(self, x):
         return self.net(x)
+
+# class Conv(nn.Module):
+#     def __init__(self, output_dim):
+#         super().__init__()
+#         self.net = nn.Sequential(
+#             nn.Conv2d(1, 16, 3, 2),
+#             nn.ReLU(),
+#             nn.Conv2d(16, 16, 3, 2),
+#             nn.ReLU(),
+#             nn.Conv2d(16, 16, 3, 2),
+#             nn.ReLU(),
+#             nn.Conv2d(16, 16, 3, 1),
+#             Flatten()
+#         )
+
+#     def forward(self, x):
+#         return self.net(x)
 
 
 #class Conv(nn.Module):
@@ -188,8 +205,11 @@ class Actor(nn.Module):
         #print(action.shape)
         return action[0].detach().cpu().numpy()
 
-conv = Conv(linear_output).to(device)
-conv_optimizer = torch.optim.Adam(conv.parameters(), lr=0.00001)
+critic_conv = Conv(linear_output).to(device)
+critic_conv_optimizer = torch.optim.Adam(critic_conv.parameters(), lr=args.conv_lr)
+
+actor_conv = Conv(linear_output).to(device)
+actor_conv_optimizer = torch.optim.Adam(actor_conv.parameters(), lr=args.conv_lr)
 
 critic = Critic().to(device)
 critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.lr)
@@ -211,38 +231,42 @@ def update_parameters(replay_buffer):
     state, action, reward, next_state, not_done = [torch.FloatTensor(t).to(device) for t in zip(*batch)]
 
     #print("Ennen konvoluutiota")
-    state = conv.forward(state)
-    next_state = conv.forward(next_state)
+    critic_state = critic_conv.forward(state)
+    critic_next_state = critic_conv.forward(next_state)
 
+    actor_state = actor_conv.forward(state)
+    actor_next_state = actor_conv.forward(next_state)
+    
     #print("Konvoluution jälkeen")
     alpha = log_alpha.exp().item()
 
     # Update critic
 
     with torch.no_grad():
-        next_action, next_action_log_prob = actor.sample(next_state)
-        q1_next, q2_next = critic_target(next_state, next_action)
+        next_action, next_action_log_prob = actor.sample(critic_next_state)
+        q1_next, q2_next = critic_target(critic_next_state, next_action)
         q_next = torch.min(q1_next, q2_next)
         value_next = q_next - alpha * next_action_log_prob
         q_target = reward + not_done * args.gamma * value_next
 
-    q1, q2 = critic(state, action)
+    q1, q2 = critic(critic_state, action)
     q1_loss = 0.5*F.mse_loss(q1, q_target)
     q2_loss = 0.5*F.mse_loss(q2, q_target)
     critic_loss = q1_loss + q2_loss
 
     critic_optimizer.zero_grad()
-    critic_loss.backward(retain_graph = True)
+    critic_loss.backward()
     critic_optimizer.step()
 
+    critic_conv_optimizer.step()
 
     for target_param, param in zip(critic_target.parameters(), critic.parameters()):
         target_param.data.copy_((1.0-args.tau)*target_param.data + args.tau*param.data)
 
     # Update actor
 
-    action_new, action_new_log_prob = actor.sample(state)
-    q1_new, q2_new = critic(state, action_new)
+    action_new, action_new_log_prob = actor.sample(actor_state)
+    q1_new, q2_new = critic(actor_state, action_new)
     q_new = torch.min(q1_new, q2_new)
     actor_loss = (alpha*action_new_log_prob - q_new).mean()
 
@@ -250,7 +274,7 @@ def update_parameters(replay_buffer):
     actor_loss.backward()
     actor_optimizer.step()
 
-    conv_optimizer.step()
+    actor_conv_optimizer.step()
 
     # Update alpha
 
@@ -275,7 +299,7 @@ for episode in range(args.n_episodes):
         temp = state[np.newaxis, np.newaxis, :]
         #print(temp.shape)
         
-        state_embedding = conv.forward(torch.FloatTensor(temp).to(device)).detach().cpu().numpy()
+        state_embedding = actor_conv.forward(torch.FloatTensor(temp).to(device)).detach().cpu().numpy()
         #print(state)
         #print(state_embedding)
 
