@@ -20,7 +20,8 @@ class box:
 
         self.init_x = x 
         self.init_y = y
-        
+        self.init_dir = direction
+
         self.x = x
         self.y = y
         self.h = h
@@ -103,7 +104,7 @@ class box:
         self.x = self.init_x
         self.y = self.init_y
         self.v = 0
-        self.dir = 0
+        self.dir = self.init_dir
         self.a = 0
 
         vc = self.vision_limits
