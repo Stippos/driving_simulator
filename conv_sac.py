@@ -35,6 +35,9 @@ parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
 parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
                     help='number of initial episodes for random exploration')
 parser.add_argument('--conv_lr', default=0.00005, type=float)
+parser.add_argument('--start_x', default=230, type=int)
+parser.add_argument('--start_y', default=400, type=int)
+parser.add_argument('--start_dir', default=0, type=float)
 parser.add_argument('--throttle_min', default=1, type=float)
 parser.add_argument('--throttle_max', default=2, type=float)
 parser.add_argument('--reward', default='speed')
@@ -45,7 +48,8 @@ args = parser.parse_args()
 
 # Initial Setup
 
-env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_max, reward_type=args.reward, vision=args.vision)
+env = game2.game(throttle_min=args.throttle_min, throttle_max=args.throttle_max, reward_type=args.reward, 
+                 vision=args.vision, start_x=args.start_x, start_y=args.start_y, start_dir=args.start_dir)
 obs_size, act_size = env.observation_space.shape[0], env.action_space.shape[0]
 
 # env.seed(args.seed)
@@ -243,7 +247,7 @@ def update_parameters(replay_buffer):
     # Update critic
 
     with torch.no_grad():
-        next_action, next_action_log_prob = actor.sample(critic_next_state)
+        next_action, next_action_log_prob = actor.sample(actor_next_state)
         q1_next, q2_next = critic_target(critic_next_state, next_action)
         q_next = torch.min(q1_next, q2_next)
         value_next = q_next - alpha * next_action_log_prob
@@ -255,7 +259,7 @@ def update_parameters(replay_buffer):
     critic_loss = q1_loss + q2_loss
 
     critic_optimizer.zero_grad()
-    critic_loss.backward()
+    critic_loss.backward(retain_graph=True)
     critic_optimizer.step()
 
     critic_conv_optimizer.step()
@@ -266,7 +270,7 @@ def update_parameters(replay_buffer):
     # Update actor
 
     action_new, action_new_log_prob = actor.sample(actor_state)
-    q1_new, q2_new = critic(actor_state, action_new)
+    q1_new, q2_new = critic(critic_state, action_new)
     q_new = torch.min(q1_new, q2_new)
     actor_loss = (alpha*action_new_log_prob - q_new).mean()
 
@@ -275,6 +279,8 @@ def update_parameters(replay_buffer):
     actor_optimizer.step()
 
     actor_conv_optimizer.step()
+    critic_conv_optimizer.step()
+
 
     # Update alpha
 

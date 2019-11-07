@@ -16,7 +16,7 @@ class box:
     The car is moved every frame according to the speed and direction of the car.
     """
 
-    def __init__(self, x, y, h, w, color, vh, vw):
+    def __init__(self, x, y, h, w, color, vh, vw, direction):
 
         self.init_x = x 
         self.init_y = y
@@ -33,7 +33,7 @@ class box:
         self.v = 0
         self.a = 0
 
-        self.dir = 0
+        self.dir = direction
 
         self.color = color
 
@@ -341,7 +341,7 @@ class game:
 
     def __init__(self, draw=True, manual_control=False, n_directions=24, 
                  reward_type="speed", throttle_min=1, throttle_max=2, 
-                 vision="simple", vision_size=300):
+                 vision="simple", vision_size=300, start_x=230, start_y=400, start_dir=0):
 
         pygame.init()
 
@@ -357,8 +357,8 @@ class game:
 
         #self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
-        car_x = 230 / 1600 * self.display_width
-        car_y = 700 / 1000 * self.display_height
+        car_x = start_x / 1600 * self.display_width
+        car_y = start_y / 1000 * self.display_height
 
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
@@ -366,7 +366,7 @@ class game:
         self.vision_size = vision_size
         self.vision = vision
 
-        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size)
+        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size, direction=start_dir)
         self.clock = pygame.time.Clock()
         self.running = True
         self.graphics = draw
