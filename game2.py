@@ -16,7 +16,7 @@ class box:
     The car is moved every frame according to the speed and direction of the car.
     """
 
-    def __init__(self, x, y, h, w, color, vh, vw, direction):
+    def __init__(self, x, y, h, w, color, vh, vw, direction, max_a):
 
         self.init_x = x 
         self.init_y = y
@@ -32,6 +32,8 @@ class box:
         self.ay = 0
 
         self.v = 0
+        self.max_a = max_a
+        self.max_v = max_a / (1 - 0.8) * 0.8
         self.a = 0
 
         self.dir = direction
@@ -94,6 +96,9 @@ class box:
         """
 
         self.a = amount
+
+        if self.a > self.max_a:
+            self.a = self.max_a
 
     def reset(self):
 
@@ -367,7 +372,7 @@ class game:
         self.vision_size = vision_size
         self.vision = vision
 
-        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size, direction=start_dir)
+        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size, direction=start_dir, max_a = throttle_max)
         self.clock = pygame.time.Clock()
         self.running = True
         self.graphics = draw
@@ -483,7 +488,7 @@ class game:
 
         height = im.shape[0]
 
-        res = im[:height//2, :]
+        res = im[:height//2, :] / 255
         
         return process_image(res)
         #return im
@@ -571,12 +576,13 @@ class game:
         #     reward = self.car.v
         # else:
 
-
+        cte = (1 - abs(outer - inner) / abs(outer + inner))
+        speed = self.car.v / self.car.max_v
 
         if self.reward_type == "speed":
             reward = self.car.v
         elif self.reward_type == "cte":
-            reward = self.car.v * (1 - abs(outer - inner) / abs(outer + inner))
+            reward = (cte + speed) / 2
 
         #reward = self.car.v
 

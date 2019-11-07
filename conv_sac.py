@@ -239,8 +239,8 @@ def update_parameters(replay_buffer):
     state, action, reward, next_state, not_done = [torch.FloatTensor(t).to(device) for t in zip(*batch)]
 
     #print("Ennen konvoluutiota")
-    critic_state = critic_conv.forward(state)
-    critic_next_state = critic_conv.forward(next_state)
+    #critic_state = critic_conv.forward(state)
+    #critic_next_state = critic_conv.forward(next_state)
 
     actor_state = actor_conv.forward(state)
     actor_next_state = actor_conv.forward(next_state)
@@ -252,12 +252,12 @@ def update_parameters(replay_buffer):
 
     with torch.no_grad():
         next_action, next_action_log_prob = actor.sample(actor_next_state)
-        q1_next, q2_next = critic_target(critic_next_state, next_action)
+        q1_next, q2_next = critic_target(actor_next_state, next_action)
         q_next = torch.min(q1_next, q2_next)
         value_next = q_next - alpha * next_action_log_prob
         q_target = reward + not_done * args.gamma * value_next
 
-    q1, q2 = critic(critic_state, action)
+    q1, q2 = critic(actor_state, action)
     q1_loss = 0.5*F.mse_loss(q1, q_target)
     q2_loss = 0.5*F.mse_loss(q2, q_target)
     critic_loss = q1_loss + q2_loss
@@ -273,7 +273,7 @@ def update_parameters(replay_buffer):
     # Update actor
 
     action_new, action_new_log_prob = actor.sample(actor_state)
-    q1_new, q2_new = critic(critic_state, action_new)
+    q1_new, q2_new = critic(actor_state, action_new)
     q_new = torch.min(q1_new, q2_new)
     actor_loss = (alpha*action_new_log_prob - q_new).mean()
 
@@ -282,9 +282,9 @@ def update_parameters(replay_buffer):
     actor_optimizer.step()
 
     actor_conv_optimizer.zero_grad()
-    critic_conv_optimizer.zero_grad()
+    #critic_conv_optimizer.zero_grad()
     
-    critic_conv_optimizer.step()
+    #critic_conv_optimizer.step()
     actor_conv_optimizer.step()
 
 
