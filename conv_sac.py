@@ -34,6 +34,8 @@ parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
                     help='total number of training episodes')
 parser.add_argument('--n_random_episodes', default=10, type=int, metavar='N',
                     help='number of initial episodes for random exploration')
+parser.add_argument('--discount', default=0.9, type=float)
+parser.add_argument('--horizon', default=10, type=float)
 parser.add_argument('--conv_lr', default=0.00005, type=float)
 parser.add_argument('--start_x', default=230, type=int)
 parser.add_argument('--start_y', default=400, type=int)
@@ -334,7 +336,7 @@ for episode in range(args.n_episodes):
         episode_reward += reward
 
         not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
-        replay_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
+        episode_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
         state = next_state
 
         #print(state)
@@ -344,16 +346,17 @@ for episode in range(args.n_episodes):
 
         if done:
             break
-#    for i in range(len(episode_buffer)):
-#        reward = 0
-#        
-#        for j in range(min(len(episode_buffer) - i, 1)):
-#            reward += episode_buffer[i + j][2][0]
-#        
-#        e = episode_buffer[i]
-#        e[2] = [reward / 20]
-#
-#        replay_buffer.append(e)
+    for i in range(len(episode_buffer)):
+       reward = 0
+       
+       for j in range(min(len(episode_buffer) - i, args.horizon)):
+           reward += args.discount**j * episode_buffer[i + j][2][0]
+       
+       norm = (1 - args.discount**args.horizon) / (1 - args.discount)
+       e = episode_buffer[i]
+       e[2] = [reward / norm]
+
+       replay_buffer.append(e)
 
 
     print("Episode {}. Reward {}".format(episode, episode_reward))

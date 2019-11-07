@@ -580,7 +580,7 @@ class game:
         speed = self.car.v / self.car.max_v
 
         if self.reward_type == "speed":
-            reward = self.car.v
+            reward = speed
         elif self.reward_type == "cte":
             reward = (cte + speed) / 2
 
