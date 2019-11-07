@@ -112,13 +112,14 @@ def rgb2gray(rgb):
 
 def process_image(obs):
     obs = rgb2gray(obs)
-    obs = cv2.resize(obs, (40, 40))
+    obs = cv2.resize(obs, (80, 80))
     return obs
 
 # Networks
 
 linear_output = 256
-linear_output = 64
+linear_output = 256
+
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
@@ -149,7 +150,7 @@ class Conv(nn.Module):
             nn.ReLU(),
             nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, 1),
+            nn.Conv2d(16, 16, 3, 2),
             Flatten()
         )
 
@@ -391,7 +392,9 @@ try:
             #print(action)
             next_state, reward, done, info = env.step(action)
 
-            #print(info + "  " + "{} {:.2f}".format(episode, episode_reward))
+            #reward = info["speed"]
+
+            print("Episode: {}, Reward: {:.2f}, Speed: {:.2f}, CTE: {:.2f}".format(episode, episode_reward, info["speed"], info["cte"]))
             episode_reward += reward
 
             not_done = 1.0 if (episode_step+1) == 1000 else float(not done)
