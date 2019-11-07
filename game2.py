@@ -543,9 +543,9 @@ class game:
 
         car = "| |"
 
-        if action[0] < -0.05:
+        if action[0] > -0.05:
             car = "\\ \\"
-        elif action[0] > 0.05:
+        elif action[0] < 0.05:
             car = "/ /"
 
         center_x = self.display_width / 2 

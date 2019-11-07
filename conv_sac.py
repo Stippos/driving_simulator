@@ -212,6 +212,10 @@ class Actor(nn.Module):
 critic_conv = Conv(linear_output).to(device)
 critic_conv_optimizer = torch.optim.Adam(critic_conv.parameters(), lr=args.conv_lr)
 
+conv_target = Conv(linear_output).to(device)
+for target_param, param in zip(conv_target.parameters(), critic_conv.parameters()):
+    target_param.data.copy_(param.data)
+
 actor_conv = Conv(linear_output).to(device)
 actor_conv_optimizer = torch.optim.Adam(actor_conv.parameters(), lr=args.conv_lr)
 
@@ -262,8 +266,7 @@ def update_parameters(replay_buffer):
     critic_loss.backward(retain_graph=True)
     critic_optimizer.step()
 
-    critic_conv_optimizer.step()
-
+    
     for target_param, param in zip(critic_target.parameters(), critic.parameters()):
         target_param.data.copy_((1.0-args.tau)*target_param.data + args.tau*param.data)
 
@@ -278,8 +281,11 @@ def update_parameters(replay_buffer):
     actor_loss.backward()
     actor_optimizer.step()
 
-    actor_conv_optimizer.step()
+    actor_conv_optimizer.zero_grad()
+    critic_conv_optimizer.zero_grad()
+    
     critic_conv_optimizer.step()
+    actor_conv_optimizer.step()
 
 
     # Update alpha
