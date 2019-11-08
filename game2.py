@@ -507,6 +507,8 @@ class game:
         im = np.stack((red, green, blue), axis = 2)
         im = np.dot(im, [0.299, 0.587, 0.114])
 
+        print(im.max())
+        print(im.min())
         height = im.shape[0]
 
         res = im[:height//2, :]
