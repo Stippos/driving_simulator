@@ -92,6 +92,11 @@ os.environ['DONKEY_SIM_PATH'] = args.sim
 os.environ['DONKEY_SIM_PORT'] = str(args.port)
 os.environ['DONKEY_SIM_HEADLESS'] = str(args.headless)
 
+# "donkey-warehouse-v0"
+# "donkey-generated-roads-v0"
+# "donkey-avc-sparkfun-v0"
+# "donkey-generated-track-v0"
+
 env = gym.make(args.env_name)
 
 obs_size, act_size = env.observation_space.shape[0], env.action_space.shape[0]
@@ -408,6 +413,9 @@ try:
             #print(action)
             next_state, reward, done, info = env.step(action)
             
+            next_state.min()
+            next_state.max()
+
             reward = info["speed"]
 
             if info["cte"] > 1 or info["cte"] < -1.5:
