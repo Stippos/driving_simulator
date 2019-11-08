@@ -413,8 +413,8 @@ try:
             #print(action)
             next_state, reward, done, info = env.step(action)
             
-            next_state.min()
-            next_state.max()
+            print(next_state.min())
+            print(next_state.max())
 
             reward = info["speed"]
 
