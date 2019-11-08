@@ -284,7 +284,16 @@ def control(box, style):
                     box.turn(turning)
                 if event.key == pygame.K_LEFT:
                     box.turn(-turning)
+def transform(im, scale):
 
+    pts1 = np.float32([[0, 0], [398, 0], [270, 398], [130, 398]]) / 400 * scale
+    pts2 = np.float32([[15, 0], [35, 0], [50, 50], [0, 50]]) / 400 * scale
+
+    M = cv2.getPerspectiveTransform(pts1,pts2)
+
+    dst = cv2.warpPerspective(img,M,(50,50), borderMode=2)
+
+    return dst
 
 def distance(x3, y3, track):
     distances = []
@@ -332,6 +341,18 @@ def process_image(obs):
 
         return result
 
+def transform(img, scale):
+
+    pts1 = np.float32([[0, 0], [398, 0], [270, 398], [130, 398]]) / 400 * scale
+    pts2 = np.float32([[15, 0], [35, 0], [50, 50], [0, 50]]) / 400 * scale
+
+    M = cv2.getPerspectiveTransform(pts1,pts2)
+
+    dst = cv2.warpPerspective(img,M,(50,50), borderMode=2)
+
+    return dst
+
+
 class action_space:
 
     """Made this to implement the sample and shape functions, 
@@ -347,12 +368,12 @@ class game:
 
     def __init__(self, draw=True, manual_control=False, n_directions=24, 
                  reward_type="speed", throttle_min=1, throttle_max=2, 
-                 vision="simple", vision_size=300, start_x=230, start_y=400, start_dir=0):
+                 vision="simple", start_x=230, start_y=400, start_dir=0, scale = 1):
 
         pygame.init()
 
-        self.display_width = 1600
-        self.display_height = 1000
+        self.display_width = 1600 * scale
+        self.display_height = 1000 * scale
         
         try:
             self.surface = pygame.display.set_mode((self.display_width, self.display_height))
@@ -369,10 +390,10 @@ class game:
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
 
-        self.vision_size = vision_size
+        self.vision_size = 300 * scale
         self.vision = vision
 
-        self.car = box(car_x, car_y, 20, 10, (0,0,0), vision_size * 2, vision_size, direction=start_dir, max_a = throttle_max)
+        self.car = box(car_x, car_y, 20, 10, (0,0,0), self.vision_size * 2, self.vision_size, direction=start_dir, max_a = throttle_max)
         self.clock = pygame.time.Clock()
         self.running = True
         self.graphics = draw
@@ -488,8 +509,9 @@ class game:
 
         height = im.shape[0]
 
-        res = im[:height//2, :] / 255
+        res = im[:height//2, :]
         
+        res = transform(res, self.vision_size)
         return process_image(res)
         #return im
     

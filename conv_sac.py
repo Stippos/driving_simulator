@@ -62,6 +62,19 @@ torch.manual_seed(args.seed)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+def image_to_ascii(im):
+    asc = []
+    chars = ["B","S","#","&","@","$","%","*","!",":","."]
+    for j in range(im.shape[1]):
+        line = []
+        for i in range(im.shape[0]):
+            line.append(chars[int(im[i, j]) // 25])
+        asc.append("".join(line))
+
+    for line in asc:
+        print(line)
+
+
 
 # Networks
 
@@ -91,7 +104,7 @@ class Conv(nn.Module):
     def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(1, 16, 3, 2),
+            nn.Conv2d(4, 16, 3, 2),
             nn.ReLU(),
             nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
@@ -243,14 +256,6 @@ def update_parameters(replay_buffer):
     batch = random.sample(replay_buffer, k=args.batch_size)
     state, action, reward, next_state, not_done = [torch.FloatTensor(t).to(device) for t in zip(*batch)]
 
-    #print("Ennen konvoluutiota")
-    #critic_state = critic_conv.forward(state)
-    #critic_next_state = critic_conv.forward(next_state)
-
-    #actor_state = actor_conv.forward(state)
-    #actor_next_state = actor_conv.forward(next_state)
-    
-    #print("Konvoluution jälkeen")
     alpha = log_alpha.exp().item()
 
     # Update critic
@@ -286,13 +291,6 @@ def update_parameters(replay_buffer):
     actor_loss.backward()
     actor_optimizer.step()
 
-    #actor_conv_optimizer.zero_grad()
-    #critic_conv_optimizer.zero_grad()
-    
-    #critic_conv_optimizer.step()
-    #actor_conv_optimizer.step()
-
-
     # Update alpha
 
     alpha_loss = -(log_alpha * (action_new_log_prob + target_entropy).detach()).mean()
@@ -308,35 +306,46 @@ replay_buffer = deque(maxlen=args.replay_buffer_size)
 
 for episode in range(args.n_episodes):
     state = env.reset()
-    #print(state)
+    
+    state = np.stack((state, state, state, state), axis = 0)
+    
     episode_reward = 0
     episode_buffer = []
-    for episode_step in range(env._max_episode_steps):
-
-        temp = state[np.newaxis, np.newaxis, :]
-        #print(temp.shape)
+    for episode_step in range(10000):
         
-        #state_embedding = actor_conv.forward(torch.FloatTensor(temp).to(device)).detach().cpu().numpy()
-        #print(state)
-        #print(state_embedding)
+        temp = state[np.newaxis, :]
+    
+        max_throttle = args.throttle_max
+        min_throttle = args.throttle_min
 
         if episode < args.n_random_episodes:
             action = env.action_space.sample()
+            action[0] = max(-0.1, min(0.1, action[0]))
+            action[1] = max(min_throttle, min(max_throttle, action[1]))
             #print(action)
         else:
             action = actor.select_action(temp)
+            action[0] = max(-1, min(1, action[0]))
+            action[1] = max(min_throttle, min(max_throttle, action[1]))
             #print(action)
 
         #print("Ennen steppiä")
         #print(action)
-        next_state, reward, done, info = env.step(action, given_obs=state)
+        next_state, reward, done, info = env.step(action)
+        
+        image_to_ascii(next_state[::2,:].T)
 
-
-        print(info + "  " + "{} {:.2f}".format(episode, episode_reward))
+        
+        print("Episode: {}, Episode reward: {:.2f}, Step reward: {:.2f}".format(episode, episode_reward, reward))
         episode_reward += reward
 
-        not_done = 1.0 if (episode_step+1) == env._max_episode_steps else float(not done)
-        episode_buffer.append([state[np.newaxis, :], action, [reward], next_state[np.newaxis, :], [not_done]])
+        not_done = 1.0 if (episode_step+1) == 1000 else float(not done)
+
+        next_state = next_state[np.newaxis, :]
+        next_state = np.vstack((state[:3, :, :], next_state))
+
+        episode_buffer.append([state, action, [reward], next_state, [not_done]])
+
         state = next_state
 
         #print(state)
@@ -347,16 +356,16 @@ for episode in range(args.n_episodes):
         if done:
             break
     for i in range(len(episode_buffer)):
-       reward = 0
-       
-       for j in range(min(len(episode_buffer) - i, args.horizon)):
-           reward += args.discount**j * episode_buffer[i + j][2][0]
-       
-       norm = (1 - args.discount**args.horizon) / (1 - args.discount)
-       e = episode_buffer[i]
-       e[2] = [reward / norm]
+        reward = 0
+    
+        for j in range(min(len(episode_buffer) - i, args.horizon)):
+            reward += args.discount**j * episode_buffer[i + j][2][0]
+        
+        norm = (1 - args.discount**args.horizon) / (1 - args.discount)
+        e = episode_buffer[i]
+        e[2] = [reward / norm]
 
-       replay_buffer.append(e)
+        replay_buffer.append(e)
 
 
     print("Episode {}. Reward {}".format(episode, episode_reward))
