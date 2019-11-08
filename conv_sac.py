@@ -333,6 +333,9 @@ for episode in range(args.n_episodes):
         #print(action)
         next_state, reward, done, info = env.step(action)
         
+        print(next_state.min())
+        print(next_state.max())
+
         image_to_ascii(next_state[::2,:].T)
 
         
