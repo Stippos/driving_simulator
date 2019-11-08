@@ -466,6 +466,10 @@ class game:
 
         pa = np.array(pygame.PixelArray(self.surface))
 
+        print(pa.max())
+        print(pa.min())
+        print(pa.mean())
+
         l = self.car.vision_corners
 
         result = np.zeros((self.car.vw, self.car.vh))
