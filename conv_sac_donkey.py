@@ -78,6 +78,8 @@ args = parser.parse_args()
 # Initial Setup
 
 
+im_rows = im_cols = 40
+
 # env.seed(args.seed)
 # env.action_space.seed(args.seed)
 random.seed(args.seed)
@@ -110,16 +112,27 @@ def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
 
 
-def process_image(obs):
+def process_image(obs, rows, cols):
     obs = rgb2gray(obs)
-    obs = cv2.resize(obs, (80, 80))
+    obs = cv2.resize(obs, (rows, cols))
     return obs
+
+def image_to_ascii(im):
+    asc = []
+    chars = ["B","S","#","&","@","$","%","*","!",":","."]
+    for j in range(im.shape[1]):
+        line = []
+        for i in range(im.shape[0]):
+            line.append(chars[int(im[i, j]) // 25])
+        asc.append("".join(line))
+
+    for line in asc:
+        print(line)
 
 # Networks
 
 linear_output = 256
-linear_output = 256
-
+linear_output = 64
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
@@ -144,13 +157,13 @@ class Conv(nn.Module):
     def __init__(self, output_dim):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Conv2d(1, 16, 3, 2),
+            nn.Conv2d(4, 16, 3, 2),
             nn.ReLU(),
             nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
             nn.Conv2d(16, 16, 3, 2),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3, 2),
+            nn.Conv2d(16, 16, 3, 1),
             Flatten()
         )
 
@@ -363,42 +376,55 @@ try:
 
     for episode in range(args.n_episodes):
         state = env.reset()
+        state = process_image(state, im_rows, im_cols)
+        state = np.stack((state, state, state, state), axis = 0)
         #print(state)
         episode_reward = 0
         episode_buffer = []
-        for episode_step in range(1000):
+        for episode_step in range(10000):
             
-            state = process_image(state)
-
-            temp = state[np.newaxis, np.newaxis, :]
+            temp = state[np.newaxis, :]
             #print(temp.shape)
             
             #state_embedding = actor_conv.forward(torch.FloatTensor(temp).to(device)).detach().cpu().numpy()
             #print(state)
             #print(state_embedding)
 
+            max_throttle = 0.3
+            min_throttle = 0.1
+
             if episode < args.n_random_episodes:
                 action = env.action_space.sample()
                 action[0] = max(-1, min(1, action[0]))
-                action[1] = max(0.3, min(0.3, action[1]))
+                action[1] = max(min_throttle, min(max_throttle, action[1]))
                 #print(action)
             else:
                 action = actor.select_action(temp)
                 action[0] = max(-1, min(1, action[0]))
-                action[1] = max(0.3, min(0.3, action[1]))
+                action[1] = max(min_throttle, min(max_throttle, action[1]))
                 #print(action)
 
             #print("Ennen steppiä")
             #print(action)
             next_state, reward, done, info = env.step(action)
+            
+            reward = info["speed"]
 
-            #reward = info["speed"]
+            if info["cte"] > 1 or info["cte"] < -1.5:
+                done = True
 
-            print("Episode: {}, Reward: {:.2f}, Speed: {:.2f}, CTE: {:.2f}".format(episode, episode_reward, info["speed"], info["cte"]))
+            image_to_ascii(process_image(next_state, 60, 30).T)
+            
+            print("Episode: {}, Episode reward: {:.2f}, Step reward: {:.2f}, Speed: {:.2f}, CTE: {:.2f}".format(episode, episode_reward, reward, info["speed"], info["cte"]))
             episode_reward += reward
 
             not_done = 1.0 if (episode_step+1) == 1000 else float(not done)
-            episode_buffer.append([state[np.newaxis, :], action, [reward], process_image(next_state)[np.newaxis, :], [not_done]])
+
+            next_state = process_image(next_state, im_rows, im_cols)[np.newaxis, :]
+            next_state = np.vstack((state[:3, :, :], next_state))
+
+            episode_buffer.append([state, action, [reward], next_state, [not_done]])
+
             state = next_state
 
             #print(state)
