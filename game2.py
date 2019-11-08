@@ -284,16 +284,7 @@ def control(box, style):
                     box.turn(turning)
                 if event.key == pygame.K_LEFT:
                     box.turn(-turning)
-def transform(im, scale):
 
-    pts1 = np.float32([[0, 0], [398, 0], [270, 398], [130, 398]]) / 400 * scale
-    pts2 = np.float32([[15, 0], [35, 0], [50, 50], [0, 50]]) / 400 * scale
-
-    M = cv2.getPerspectiveTransform(pts1,pts2)
-
-    dst = cv2.warpPerspective(img,M,(50,50), borderMode=2)
-
-    return dst
 
 def distance(x3, y3, track):
     distances = []
@@ -370,18 +361,22 @@ class game:
                  reward_type="speed", throttle_min=1, throttle_max=2, 
                  vision="simple", start_x=230, start_y=400, start_dir=0, scale = 1):
 
-        pygame.init()
-
+        #pygame.init()
+        
         self.display_width = 1600 * scale
         self.display_height = 1000 * scale
-        
+
         try:
+            pygame.init()
             self.surface = pygame.display.set_mode((self.display_width, self.display_height))
+            self.mode = "head"
         except pygame.error:
+            self.mode = "headless"
             import os
             os.environ["SDL_VIDEODRIVER"] = "dummy"
-            self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
-
+            pygame.init()
+            self.surface = pygame.display.set_mode((self.display_width, self.display_height))
+        
         #self.surface = pygame.display.set_mode((self.display_width, self.display_height)) 
 
         car_x = start_x / 1600 * self.display_width
@@ -466,10 +461,6 @@ class game:
 
         pa = np.array(pygame.PixelArray(self.surface))
 
-        print(pa.max())
-        print(pa.min())
-        print(pa.mean())
-
         l = self.car.vision_corners
 
         result = np.zeros((self.car.vw, self.car.vh))
@@ -502,17 +493,18 @@ class game:
         vision = pa[left:right, top:bottom].T
         vision = np.pad(vision, ((pad_top, pad_bottom), (pad_left, pad_right)), mode="edge")
         
-        vision = rotate(vision, self.car.dir / np.pi * 180, reshape = False, mode = "nearest")
+        vision = rotate(vision, self.car.dir / np.pi * 180, reshape = False, mode="nearest")
+        
+        if self.mode == "head":
+            red = vision >> 16
+            green = (vision >> 8) - (red << 8)
+            blue = vision - (red << 16) - (green << 8)
 
-        red = vision >> 16
-        green = (vision >> 8) - (red << 8)
-        blue = vision - (red << 16) - (green << 8)
+            im = np.stack((red, green, blue), axis = 2)
+            im = np.dot(im, [0.299, 0.587, 0.114])
+        else:
+            im = vision
 
-        im = np.stack((red, green, blue), axis = 2)
-        im = np.dot(im, [0.299, 0.587, 0.114])
-
-        print(im.max())
-        print(im.min())
         height = im.shape[0]
 
         res = im[:height//2, :]
