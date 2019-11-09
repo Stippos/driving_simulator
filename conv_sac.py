@@ -7,6 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
+
+import cv2
+
 import game2
 
 
@@ -74,12 +77,19 @@ def image_to_ascii(im):
     for line in asc:
         print(line)
 
+im_rows = im_cols = 60
 
+def process_image(obs):
+
+    result = cv2.resize(obs, (im_rows, im_cols))
+
+    return result
 
 # Networks
 
 linear_output = 256
-linear_output = 64
+linear_output = 256
+
 class Flatten(nn.Module):
     def forward(self, input):
         return input.view(input.size(0), -1)
@@ -306,7 +316,7 @@ replay_buffer = deque(maxlen=args.replay_buffer_size)
 
 for episode in range(args.n_episodes):
     state = env.reset()
-    
+    state = process_image(state)
     state = np.stack((state, state, state, state), axis = 0)
     
     episode_reward = 0
@@ -333,11 +343,10 @@ for episode in range(args.n_episodes):
         #print(action)
         next_state, reward, done, info = env.step(action)
         
-        #print(next_state.min())
-        #print(next_state.max())
+        next_state = process_image(next_state)
 
         image_to_ascii(next_state[::2,:].T)
-
+        
         
         print("Episode: {}, Episode reward: {:.2f}, Step reward: {:.2f}".format(episode, episode_reward, reward))
         episode_reward += reward

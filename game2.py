@@ -326,20 +326,22 @@ def distance(x3, y3, track):
 
     return np.min(distances)
 
-def process_image(obs):
-
-        result = cv2.resize(obs, (40, 40))
-
-        return result
-
 def transform(img, scale):
 
-    pts1 = np.float32([[0, 0], [398, 0], [270, 398], [130, 398]]) / 400 * scale
-    pts2 = np.float32([[15, 0], [35, 0], [50, 50], [0, 50]]) / 400 * scale
+    # import matplotlib.pyplot as plt
+    # plt.imshow(img)
+    # plt.show()
+
+    pts1 = np.float32([[0, 0], [300, 0], [200, 300], [100, 300]]) / 300 * scale
+    pts2 = np.float32([[28, 0], [52, 0], [80, 80], [0, 80]])
 
     M = cv2.getPerspectiveTransform(pts1,pts2)
 
-    dst = cv2.warpPerspective(img,M,(50,50), borderMode=2)
+    dst = cv2.warpPerspective(img,M,(80,80), borderMode=0)
+
+    # import matplotlib.pyplot as plt
+    # plt.imshow(dst)
+    # plt.show()
 
     return dst
 
@@ -463,8 +465,6 @@ class game:
 
         l = self.car.vision_corners
 
-        result = np.zeros((self.car.vw, self.car.vh))
-
         left = max(0, int(l[0][0]))
         right = min(self.surface.get_width(), int(l[1][0]))
         top = max(0, int(l[0][1]))
@@ -485,15 +485,11 @@ class game:
         elif bottom < l[3][1]:
             pad_bottom = int(l[3][1] - bottom)
 
-        # print(pad_left)
-        # print(pad_right)
-        # print(pad_top) 
-        # print(pad_bottom)
 
         vision = pa[left:right, top:bottom].T
         vision = np.pad(vision, ((pad_top, pad_bottom), (pad_left, pad_right)), mode="edge")
         
-        vision = rotate(vision, self.car.dir / np.pi * 180, reshape = False, mode="nearest")
+        vision = rotate(vision, self.car.dir / np.pi * 180, reshape=False, mode="nearest")
         
         if self.mode == "head":
             red = vision >> 16
@@ -510,7 +506,7 @@ class game:
         res = im[:height//2, :]
         
         res = transform(res, self.vision_size)
-        return process_image(res)
+        return res
         #return im
     
     def reset(self):
@@ -530,7 +526,7 @@ class game:
 
             throttle = self.throttle_min + max(0, action[1]) * (self.throttle_max - self.throttle_min)
 
-            obs, reward, done = self.frame(action[0] / 10, throttle, given_obs) 
+            obs, reward, done = self.frame(action[0], throttle, given_obs) 
             
             if not done:
                 continue
