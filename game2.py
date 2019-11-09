@@ -387,7 +387,7 @@ class game:
         # car_x = 1420 / 1600 * self.display_width
         # car_y = 800 / 1000 * self.display_height
 
-        self.vision_size = 300 * scale
+        self.vision_size = 500 * scale
         self.vision = vision
 
         self.car = box(car_x, car_y, 20, 10, (0,0,0), self.vision_size * 2, self.vision_size, direction=start_dir, max_a = throttle_max)
