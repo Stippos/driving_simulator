@@ -77,7 +77,7 @@ def image_to_ascii(im):
     for line in asc:
         print(line)
 
-im_rows = im_cols = 60
+im_rows = im_cols = 40
 
 def process_image(obs):
 
@@ -88,7 +88,7 @@ def process_image(obs):
 # Networks
 
 linear_output = 256
-linear_output = 256
+linear_output = 64
 
 class Flatten(nn.Module):
     def forward(self, input):
