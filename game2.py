@@ -345,6 +345,10 @@ def transform(img, scale):
 
     return dst
 
+def add_noise(im):
+    noise = (np.random.rand(*im.shape) - 0.5) * 40
+    return np.clip(im + noise, 0, 255)
+
 
 class action_space:
 
@@ -506,6 +510,7 @@ class game:
         res = im[:height//2, :]
         
         res = transform(res, self.vision_size)
+        res = add_noise(res)
         return res
         #return im
     
@@ -574,8 +579,6 @@ class game:
 
         rel_x = self.car.x - center_x
         rel_y = center_y - self.car.y
-
-        progress = np.tan(rel_y / rel_x) / 2 / np.pi
 
         string = "#" * left_wall + "." * left_lane + car + "." * right_lane + "#" * right_wall
         
