@@ -19,6 +19,7 @@ import cv2
 
 import gym_donkeycar
 
+
 env_list = [
        "donkey-warehouse-v0",
        "donkey-generated-roads-v0",
@@ -39,13 +40,13 @@ parser.add_argument('--gamma', default=0.99, type=float, metavar='GAMMA',
                     help='discount factor')
 parser.add_argument('--tau', default=0.005, type=float, metavar='TAU',
                     help='smoothing coefficient for target network')
-parser.add_argument('--lr', default=0.0003, type=float, metavar='LR',
+parser.add_argument('--lr', default=0.001, type=float, metavar='LR',
                     help='learning rate')
 parser.add_argument('--replay_buffer_size', default=1000000, type=int, metavar='N',
                     help='size of the replay buffer')
 parser.add_argument('--hidden_size', default=256, type=int, metavar='N',
                     help='number of units in a hidden layer')
-parser.add_argument('--batch_size', default=256, type=int, metavar='N',
+parser.add_argument('--batch_size', default=64, type=int, metavar='N',
                     help='batch size')
 parser.add_argument('--n_episodes', default=1000, type=int, metavar='N',
                     help='total number of training episodes')
@@ -61,8 +62,8 @@ parser.add_argument('--throttle', type=float, default=0.3, help='constant thrott
 parser.add_argument('--env_name', type=str, default='donkey-generated-track-v0', help='name of donkey sim environment', choices=env_list)
 
 
-parser.add_argument('--discount', default=0.9, type=float)
-parser.add_argument('--horizon', default=10, type=float)
+parser.add_argument('--discount', default=0.90, type=float)
+parser.add_argument('--horizon', default=50, type=float)
 parser.add_argument('--conv_lr', default=0.00005, type=float)
 parser.add_argument('--start_x', default=230, type=int)
 parser.add_argument('--start_y', default=400, type=int)
@@ -96,6 +97,8 @@ os.environ['DONKEY_SIM_HEADLESS'] = str(args.headless)
 # "donkey-generated-roads-v0"
 # "donkey-avc-sparkfun-v0"
 # "donkey-generated-track-v0"
+
+
 
 env = gym.make(args.env_name)
 
@@ -398,7 +401,7 @@ try:
             max_throttle = 0.3
             min_throttle = 0.1
 
-            if episode < args.n_random_episodes:
+            if episode < 3:
                 action = env.action_space.sample()
                 action[0] = max(-1, min(1, action[0]))
                 action[1] = max(min_throttle, min(max_throttle, action[1]))
@@ -418,7 +421,7 @@ try:
 
             reward = info["speed"]
 
-            if info["cte"] > 1 or info["cte"] < -1.5:
+            if info["cte"] > 2.5 or info["cte"] < -2:
                 done = True
 
             image_to_ascii(process_image(next_state, 60, 30).T)
@@ -438,7 +441,7 @@ try:
             #print(state)
 
             if len(replay_buffer) > args.batch_size:
-                update_parameters(replay_buffer)
+               update_parameters(replay_buffer)
 
             if done:
                 break
@@ -453,6 +456,9 @@ try:
             e[2] = [reward / norm]
 
             replay_buffer.append(e)
+
+        for i in range(50):
+            update_parameters(replay_buffer)
 
 
         print("Episode {}. Reward {}".format(episode, episode_reward))
